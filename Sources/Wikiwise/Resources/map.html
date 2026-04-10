@@ -1,0 +1,3877 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Map — Wikiwise</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='25' font-size='28' font-family='Source Serif 4,Georgia,serif' font-style='italic'%3EW%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="wikipedia.css">
+<style>
+  /* ── Dark dungeon override ─────────────────────────────────── */
+  /* Light mode (default) — matches wiki editorial surface */
+  :root {
+    --dg-bg: #fbfaf5;
+    --dg-bg2: #f5f3ec;
+    --dg-surface: #ffffff;
+    --dg-surface2: #f0ede4;
+    --dg-border: #e3dccb;
+    --dg-border-glow: #d4cbb5;
+    --dg-text: #1a1612;
+    --dg-text-dim: rgba(26, 22, 18, 0.5);
+    --dg-text-ghost: rgba(26, 22, 18, 0.18);
+    --dg-maroon: #7a1f1f;
+    --dg-maroon-bright: #a03030;
+    --dg-teal: #1a7a6e;
+    --dg-teal-dim: rgba(26, 122, 110, 0.25);
+    --dg-gold: #9a6a2a;
+    --dg-gold-bright: #b87d30;
+    --dg-cream: #1a1612;
+    --dg-cat-question: #4a7ca6;
+    --dg-cat-concept: #4f8a6d;
+    --dg-cat-entity: #c77a3c;
+    --dg-cat-source: #8d6ba3;
+    --dg-cat-special: #9a8a77;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --dg-bg: #0a1214;
+      --dg-bg2: #0f1a1d;
+      --dg-surface: #132024;
+      --dg-surface2: #1a2c31;
+      --dg-border: #1e3338;
+      --dg-border-glow: #2a4a50;
+      --dg-text: #FAF0E6;
+      --dg-text-dim: rgba(250, 240, 230, 0.5);
+      --dg-text-ghost: rgba(250, 240, 230, 0.2);
+      --dg-maroon: #722F37;
+      --dg-maroon-bright: #a34450;
+      --dg-teal: #2A9D8F;
+      --dg-teal-dim: rgba(42, 157, 143, 0.35);
+      --dg-gold: #C4813D;
+      --dg-gold-bright: #e0a050;
+      --dg-cream: #FAF0E6;
+      --dg-cat-question: #5a9cc6;
+      --dg-cat-concept: #5aaa7d;
+      --dg-cat-entity: #d89a5c;
+      --dg-cat-source: #ad8bc3;
+      --dg-cat-special: #baa997;
+    }
+  }
+
+  html, body { height: 100%; }
+  body.page-map {
+    overflow: hidden;
+    background: var(--dg-bg);
+  }
+
+  /* Masthead removed — map uses its own nav toggle */
+  body.page-map #search-results a {
+    color: var(--dg-text);
+    border-bottom-color: var(--dg-border);
+  }
+  body.page-map #search-results a:hover {
+    background: var(--dg-surface2);
+  }
+  body.page-map #search-results .hint { color: var(--dg-text-dim); }
+
+  .map-root {
+    position: fixed;
+    top: 0;
+    left: 0; right: 0; bottom: 0;
+    background: var(--dg-bg);
+  }
+  #map-canvas {
+    width: 100%; height: 100%;
+    display: block;
+    cursor: grab;
+    touch-action: manipulation;
+  }
+  #map-canvas:active { cursor: grabbing; }
+
+  /* ── Panels ────────────────────────────────────────────────── */
+  .map-panel {
+    position: absolute;
+    background: var(--dg-surface);
+    border: 1px solid var(--dg-border);
+    border-radius: 3px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--dg-text);
+  }
+
+  /* ── Legend ─────────────────────────────────────────────────── */
+  .map-legend {
+    top: 18px; right: 18px;
+    padding: 12px 14px;
+    min-width: 180px;
+    z-index: 100;
+    transition: right 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .map-legend h4 {
+    margin: 0 0 8px;
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--dg-text-dim);
+    font-weight: 600;
+  }
+  .map-legend ul { list-style: none; padding: 0; margin: 0; }
+  .map-legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.2s ease;
+  }
+  .map-legend li.dimmed { opacity: 0.25; }
+  .map-legend li:hover { opacity: 0.8; }
+  .map-legend li.dimmed:hover { opacity: 0.4; }
+  .map-legend .dot {
+    width: 8px; height: 8px; border-radius: 2px;
+    display: inline-block; flex: 0 0 auto;
+  }
+  .map-legend .bracket {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--dg-text-dim);
+    min-width: 2.2em;
+    text-align: center;
+  }
+  .map-legend .count {
+    margin-left: auto;
+    color: var(--dg-text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .map-legend .reset-btn {
+    display: block;
+    margin-top: 8px;
+    padding: 3px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dg-teal);
+    background: transparent;
+    border: 1px solid var(--dg-teal-dim);
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .map-legend .reset-btn:hover {
+    background: rgba(42, 157, 143, 0.12);
+    border-color: var(--dg-teal);
+    color: var(--dg-cream);
+  }
+
+  /* ── Help ───────────────────────────────────────────────────── */
+  .map-help {
+    bottom: 52px; left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 10px;
+    color: var(--dg-text-ghost);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* ── Stats ──────────────────────────────────────────────────── */
+  .map-stats {
+    top: 18px; left: 18px;
+    padding: 8px 12px;
+    color: var(--dg-text-dim);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .map-stats strong { color: var(--dg-gold); font-weight: 600; }
+
+  /* ── Nav toggle ─────────────────────────────────────────────── */
+  .map-nav-toggle {
+    position: absolute;
+    top: 18px; left: 50%; transform: translateX(-50%);
+    display: flex;
+    background: var(--dg-surface);
+    border: 1px solid var(--dg-border);
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    z-index: 100;
+  }
+  .map-nav-toggle a {
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dg-text-dim);
+    text-decoration: none;
+    border: none;
+    border-right: 1px solid var(--dg-border);
+    transition: background 0.15s, color 0.15s;
+  }
+  .map-nav-toggle a:last-child { border-right: none; }
+  .map-nav-toggle a:hover { background: var(--dg-surface2); color: var(--dg-text); }
+  .map-nav-toggle a.active {
+    background: var(--dg-text);
+    color: var(--dg-bg);
+  }
+
+  /* ── HUD Breadcrumb bar ─────────────────────────────────────── */
+  .map-hud {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 44px;
+    background: var(--dg-surface);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--dg-border);
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--dg-text-dim);
+    z-index: 150;
+    transition: opacity 0.2s ease;
+    overflow: hidden;
+    gap: 6px;
+  }
+  .map-hud.empty { opacity: 0.4; }
+  .hud-node {
+    color: var(--dg-gold);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .hud-sep {
+    color: var(--dg-text-ghost);
+    margin: 0 2px;
+  }
+  .hud-cat {
+    color: var(--dg-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.58rem;
+    white-space: nowrap;
+  }
+  .hud-neighbors {
+    display: flex;
+    gap: 6px;
+    overflow: hidden;
+    flex-shrink: 1;
+  }
+  .hud-neighbor {
+    color: var(--dg-teal);
+    white-space: nowrap;
+    font-size: 0.65rem;
+  }
+  .hud-label {
+    color: var(--dg-text-ghost);
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+  .hud-zoom {
+    margin-left: auto;
+    color: var(--dg-text-ghost);
+    font-size: 0.6rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* ── Tooltip ────────────────────────────────────────────────── */
+  .map-tooltip {
+    position: fixed;
+    z-index: 300;
+    width: 22rem;
+    background: var(--dg-surface);
+    border: 1px solid var(--dg-border-glow);
+    border-radius: 3px;
+    padding: 0.85rem 1.05rem;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15), 0 0 1px rgba(26, 122, 110, 0.2);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--dg-text);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .map-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .map-tooltip .tip-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.56rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 0.3rem;
+  }
+  .map-tooltip .tip-title {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-style: italic;
+    font-size: 1.02rem;
+    font-weight: 500;
+    margin: 0 0 0.4rem;
+    color: var(--dg-cream);
+    line-height: 1.2;
+  }
+  .map-tooltip .tip-lead {
+    color: var(--dg-text-dim);
+    margin: 0;
+    font-size: 0.82rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ── Mini-map ───────────────────────────────────────────────── */
+  .map-minimap {
+    position: absolute;
+    bottom: 62px;
+    right: 18px;
+    width: 160px;
+    height: 100px;
+    background: var(--dg-surface);
+    border: 1px solid var(--dg-border);
+    border-radius: 3px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    z-index: 90;
+    transition: right 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #minimap-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ── Stacking panels (Obsidian Publish style) ──────────────── */
+  .panel-overlay {
+    position: absolute;
+    top: 0; right: 0; bottom: 44px;
+    display: flex;
+    flex-direction: row-reverse;
+    pointer-events: none;
+    z-index: 200;
+    overflow: hidden;
+  }
+  .stack-panel {
+    pointer-events: auto;
+    width: 380px;
+    min-width: 380px;
+    height: 100%;
+    background: var(--dg-bg2);
+    border-left: 1px solid var(--dg-border);
+    border-top: 1px solid var(--dg-border);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+  }
+  .stack-panel.visible {
+    transform: translateX(0);
+  }
+  .stack-panel.stacked {
+    width: 360px;
+    min-width: 360px;
+    margin-right: -20px;
+    opacity: 0.85;
+  }
+  .panel-header {
+    padding: 22px 18px 14px;
+    border-bottom: 1px solid var(--dg-border);
+    flex-shrink: 0;
+  }
+  .panel-close {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 24px; height: 24px;
+    background: transparent;
+    border: 1px solid var(--dg-border);
+    border-radius: 2px;
+    color: var(--dg-text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .panel-close:hover {
+    background: var(--dg-maroon);
+    border-color: var(--dg-maroon);
+    color: var(--dg-cream);
+  }
+  .panel-cat {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.56rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+  }
+  .panel-title {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-style: italic;
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: var(--dg-cream);
+    line-height: 1.25;
+    margin: 0;
+    padding-right: 30px;
+  }
+  .panel-body {
+    padding: 16px 18px;
+    overflow-y: auto;
+    flex: 1;
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--dg-text-dim);
+  }
+  .panel-body p { margin: 0 0 1em; }
+  .panel-body h3 {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dg-cream);
+    margin: 1.4em 0 0.5em;
+    line-height: 1.3;
+  }
+  .panel-body h3:first-child { margin-top: 0; }
+  .panel-body strong {
+    color: var(--dg-cream);
+    font-weight: 600;
+  }
+  .panel-body em {
+    font-style: italic;
+    color: rgba(250, 240, 230, 0.72);
+  }
+  .panel-body a {
+    color: var(--dg-teal);
+    text-decoration: none;
+    border-bottom: 1px solid var(--dg-teal-dim);
+    transition: border-color 0.15s;
+  }
+  .panel-body a:hover {
+    border-bottom-color: var(--dg-teal);
+  }
+  .panel-body cite {
+    font-style: normal;
+    color: var(--dg-text-dim);
+    font-size: 0.82rem;
+  }
+  .panel-nav {
+    padding: 12px 18px;
+    border-top: 1px solid var(--dg-border);
+    flex-shrink: 0;
+  }
+  .panel-nav a {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dg-teal);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .panel-nav a:hover { color: var(--dg-gold); }
+  .panel-nav a::after { content: " \2192"; }
+
+  /* ── Zoom controls ──────────────────────────────────────────── */
+  .map-zoom-controls {
+    position: absolute;
+    bottom: 62px;
+    left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 100;
+  }
+  .map-zoom-btn {
+    width: 28px;
+    height: 28px;
+    background: var(--dg-surface);
+    border: 1px solid var(--dg-border);
+    border-radius: 3px;
+    color: var(--dg-cream);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    padding: 0;
+  }
+  .map-zoom-btn:hover {
+    border-color: var(--dg-teal);
+    box-shadow: 0 0 6px rgba(42, 157, 143, 0.25);
+    background: var(--dg-surface2);
+  }
+  .map-zoom-level {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--dg-text-ghost);
+    text-align: center;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Reduced motion ─────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .stack-panel { transition-duration: 0.01ms !important; }
+    .map-tooltip { transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body class="page-map">
+<div class="map-root">
+  <canvas id="map-canvas"></canvas>
+  <div class="map-nav-toggle">
+    <a href="map.html" class="active">Map</a>
+    <a href="graph.html">Classic</a>
+  </div>
+  <div class="map-panel map-stats" id="map-stats"></div>
+  <div class="map-panel map-legend">
+    <h4>Rooms</h4>
+    <ul id="legend-items"></ul>
+    <button class="reset-btn" id="legend-reset" style="display:none">Show all</button>
+  </div>
+  <div class="map-panel map-help">scroll zoom / drag pan / hover info / click panel / dblclick editorial / arrows navigate / R editorial / esc clear</div>
+  <div class="map-minimap">
+    <canvas id="minimap-canvas"></canvas>
+  </div>
+  <div class="map-zoom-controls" id="zoom-controls">
+    <button class="map-zoom-btn" id="zoom-in-btn" title="Zoom in">+</button>
+    <button class="map-zoom-btn" id="zoom-out-btn" title="Zoom out">&minus;</button>
+    <button class="map-zoom-btn" id="zoom-fit-btn" title="Zoom to fit">1</button>
+    <button class="map-zoom-btn" id="zoom-read-btn" title="Editorial mode">R</button>
+    <div class="map-zoom-level" id="zoom-level-label">1.0x</div>
+  </div>
+  <div class="panel-overlay" id="panel-overlay"></div>
+  <div class="map-hud empty" id="map-hud">
+    <span class="hud-label">explore the map</span>
+    <span class="hud-zoom" id="hud-zoom">1.0x</span>
+  </div>
+</div>
+<div class="map-tooltip" id="map-tooltip"></div>
+<script src="app.js"></script>
+<script>
+window.__MAP_DATA__ = __MAP_DATA_PLACEHOLDER__;
+window.__PREVIEWS_DATA__ = __PREVIEWS_DATA_PLACEHOLDER__;
+window.__GRAPH_DATA__ = __GRAPH_DATA_PLACEHOLDER__;
+</script>
+<script type="module">
+import { prepareWithSegments, layoutWithLines, layoutNextLine } from 'https://cdn.jsdelivr.net/npm/@chenglou/pretext@0.0.4/+esm';
+
+(function () {
+  // ── Theme palette — reads CSS variables so light/dark mode works automatically ──
+  var cs = getComputedStyle(document.documentElement);
+  function cssVar(name) { return cs.getPropertyValue(name).trim(); }
+  var DG = {
+    bg:           cssVar('--dg-bg'),
+    surface:      cssVar('--dg-surface'),
+    border:       cssVar('--dg-border'),
+    borderGlow:   cssVar('--dg-border-glow'),
+    text:         cssVar('--dg-text'),
+    textDim:      cssVar('--dg-text-dim'),
+    textGhost:    cssVar('--dg-text-ghost'),
+    maroon:       cssVar('--dg-maroon'),
+    maroonBright: cssVar('--dg-maroon-bright'),
+    teal:         cssVar('--dg-teal'),
+    tealDim:      cssVar('--dg-teal-dim'),
+    gold:         cssVar('--dg-gold'),
+    goldBright:   cssVar('--dg-gold-bright'),
+    cream:        cssVar('--dg-cream'),
+  };
+
+  // ── Category colors — read from CSS variables ──
+  var COLORS = {
+    question:   cssVar('--dg-cat-question'),
+    concept:    cssVar('--dg-cat-concept'),
+    entity:     cssVar('--dg-cat-entity'),
+    source:     cssVar('--dg-cat-source'),
+    special:    cssVar('--dg-cat-special')
+  };
+  var CATEGORY_LABELS = {
+    question:   "Open Questions",
+    concept:    "Concepts",
+    entity:     "Entities",
+    source:     "Sources",
+    special:    "Meta",
+  };
+  var BRACKETS = {
+    question:   ["<", ">"],
+    concept:    ["(", ")"],
+    entity:     ["[", "]"],
+    source:     ["[", "]"],
+    special:    ["{", "}"],
+  };
+
+  // ── State ──
+  var nodes = [];
+  var edges = [];
+  var nodeById = {};
+  var neighbors = {};
+  var edgeWeights = {};
+  var previews = null;
+  var hoverId = null;
+  var hoverNode = null;
+  var searchHighlightId = null;
+  var selectedNodeId = null;
+  var activeCategories = new Set(Object.keys(COLORS));
+  var hiddenNodes = new Set();
+  var stackPanels = [];  // [{nodeId, el}]
+  var pretextCache = {};
+  var pulsePhase = 0;    // for animated glow
+  var animFrameId = null;
+
+  // ── Canvas + transform ──
+  var canvas = document.getElementById("map-canvas");
+  var ctx = canvas.getContext("2d");
+  var dpr = window.devicePixelRatio || 1;
+  var W, H;
+
+  var panX = 0, panY = 0, zoom = 1;
+  var targetZoom = 1, targetPanX = 0, targetPanY = 0;
+  var animating = false;
+  var dragging = false, didDrag = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
+
+  // ── Layout constants ──
+  var CELL_W = 200;
+  var CELL_H = 80;
+  var FONT_SIZE = 13;
+  var PREVIEW_FONT_SIZE = 11;
+  var PREVIEW_LINE_HEIGHT = 15;
+  var ZOOM_PREVIEW_THRESHOLD = 2.0;
+  var ZOOM_EDITORIAL_THRESHOLD = 4.0;
+  var PREVIEW_MAX_H = 50;  // max extra height for preview text (keeps boxes from overlapping)
+  var MONO = "'JetBrains Mono', monospace";
+  var SERIF = "'Source Serif 4', Georgia, serif";
+
+  // ── Editorial mode state ──
+  var editorialNodeId = null;       // which node is in editorial mode
+  var editorialFade = 0;            // 0..1 transition progress
+  var editorialFadeTarget = 0;
+  var editorialFadeStart = 0;
+  var editorialFadeStartTime = 0;
+  var EDITORIAL_FADE_DURATION = 500;
+  var editorialLayoutCache = {};    // cached editorial layouts per node
+  var forceEditorial = false;       // set by dblclick to enter editorial without zoom animation
+  var editorialScrollY = 0;         // scroll offset within the editorial card (pixels)
+
+  // ── Draggable pull-quote state (single-column editorial mode) ──
+  // Quote position is stored in COLUMN-LOCAL coordinates: x=0 is left of the body column,
+  // y=0 is the TOP of the body (right after title/separator). This lets us re-use the
+  // same position across scroll, resize, and fade animation.
+  var editorialQuoteX = 0;
+  var editorialQuoteY = 0;
+  var editorialQuoteInitialized = false; // per-node, set when layout first computed
+  var editorialDraggingQuote = false;
+  var editorialDragHoverQuote = false;
+  var editorialDragOffsetX = 0;
+  var editorialDragOffsetY = 0;
+  var editorialDragSkipFrame = false; // throttle to ~30fps during drag if needed
+
+  function hexRgb(hex) {
+    var h = hex.replace("#", "");
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+  }
+  var RGB = {};
+  for (var k in COLORS) RGB[k] = hexRgb(COLORS[k]);
+
+  function rgba(cat, a) {
+    var c = RGB[cat] || { r: 150, g: 150, b: 150 };
+    return "rgba(" + c.r + "," + c.g + "," + c.b + "," + a + ")";
+  }
+
+  function tealRgba(a) {
+    var c = hexRgb(DG.teal);
+    return "rgba(" + c.r + "," + c.g + "," + c.b + "," + a + ")";
+  }
+
+  // ── Escape ──
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  function truncateAtParagraph(text, maxLen) {
+    if (!text || text.length <= maxLen) return text;
+    // Try to cut at a paragraph break
+    var cut = text.indexOf('\n\n');
+    if (cut > 0 && cut <= maxLen) return text.slice(0, cut);
+    // Otherwise cut at last sentence end before maxLen
+    var trimmed = text.slice(0, maxLen);
+    var lastDot = trimmed.lastIndexOf('. ');
+    if (lastDot > maxLen * 0.4) return trimmed.slice(0, lastDot + 1);
+    return trimmed + '…';
+  }
+
+  function formatLead(text) {
+    if (!text) return '<p>No preview available.</p>';
+    return text.split(/\n\n+/).map(function(p) {
+      p = p.trim();
+      return p ? '<p>' + escapeHtml(p) + '</p>' : '';
+    }).join('');
+  }
+
+  function formatRich(text) {
+    if (!text) return '<p>No preview available.</p>';
+    return text.split(/\n\n+/).map(function(para) {
+      para = para.trim();
+      if (!para) return '';
+      // Headers: ## Title -> <h3>. Match both "## Title" (with space) and
+      // "##Title" (no space) — build.py's rich_text() strips the space when
+      // it emits "##Heading" so the editorial canvas renderer can detect
+      // headers via /^##/, and this HTML panel path has to accept the same.
+      if (/^##/.test(para)) {
+        var headerText = para.replace(/^##\s*/, '');
+        return '<h3>' + escapeHtml(headerText) + '</h3>';
+      }
+      // Escape HTML first, then apply markup conversions
+      var safe = escapeHtml(para);
+      // Bold: **text** -> <strong>
+      safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      // Italic: *text* -> <em> (but not inside already-processed strong tags)
+      safe = safe.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      // Wikilinks: {{slug}} -> teal link
+      safe = safe.replace(/\{\{([^}]+)\}\}/g, function(_, slug) {
+        var display = slug.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        return '<a href="' + slug + '.html" style="color:var(--dg-teal)">' + display + '</a>';
+      });
+      // Citation references: ([[slug]]) -> dimmed cite
+      safe = safe.replace(/\(\[\[([^\]]+)\]\]\)/g, function(_, slug) {
+        return '<cite style="color:var(--dg-text-dim)">(' + escapeHtml(slug) + ')</cite>';
+      });
+      return '<p>' + safe + '</p>';
+    }).join('');
+  }
+
+  // ── Tooltip ──
+  var tooltip = document.getElementById("map-tooltip");
+  function showTooltip(node, screenX, screenY) {
+    if (!previews) return;
+    var p = previews[node.id];
+    if (!p) return;
+    var cat = node.category;
+    var color = COLORS[cat] || "#baa997";
+    tooltip.innerHTML =
+      '<div class="tip-type" style="color:' + color + '">' + escapeHtml(CATEGORY_LABELS[cat] || cat) + '</div>' +
+      '<div class="tip-title">' + escapeHtml(p.title || node.label) + '</div>' +
+      '<p class="tip-lead">' + escapeHtml(truncateAtParagraph(p.lead || "", 250)) + '</p>';
+    var tw = 22 * 16, margin = 16;
+    var left = screenX + 16, top = screenY - 10;
+    if (left + tw > window.innerWidth - margin) left = screenX - tw - 16;
+    if (left < margin) left = margin;
+    if (top < margin) top = margin;
+    if (top + 200 > window.innerHeight) top = window.innerHeight - 220;
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+    tooltip.classList.add("visible");
+  }
+  function hideTooltip() { tooltip.classList.remove("visible"); }
+
+  // ── Transforms ──
+  function worldToScreen(wx, wy) { return [wx * zoom + panX, wy * zoom + panY]; }
+  function screenToWorld(sx, sy) { return [(sx - panX) / zoom, (sy - panY) / zoom]; }
+
+  // ── Smooth animation ──
+  function animateTo(tz, tpx, tpy, duration) {
+    targetZoom = tz; targetPanX = tpx; targetPanY = tpy;
+    if (animating) return;
+    animating = true;
+    var sz = zoom, spx = panX, spy = panY, st = performance.now();
+    duration = duration || 300;
+    function ease(t) { return 1 - Math.pow(1 - t, 3); }
+    function step(now) {
+      var t = Math.min(1, (now - st) / duration);
+      var e = ease(t);
+      zoom = sz + (targetZoom - sz) * e;
+      panX = spx + (targetPanX - spx) * e;
+      panY = spy + (targetPanY - spy) * e;
+      scheduleRedraw();
+      if (t < 1) requestAnimationFrame(step);
+      else { zoom = targetZoom; panX = targetPanX; panY = targetPanY; animating = false; scheduleRedraw(); }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function zoomToNode(node, tz) {
+    tz = tz || 2.5;
+    animateTo(tz, W / 2 - node._wx * tz, H / 2 - node._wy * tz, 400);
+  }
+  function panToNode(node) {
+    animateTo(zoom, W / 2 - node._wx * zoom, H / 2 - node._wy * zoom, 300);
+  }
+
+  // ── Hit testing ──
+  function nodeAt(sx, sy) {
+    var w = screenToWorld(sx, sy), wx = w[0], wy = w[1];
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (hiddenNodes.has(n.id)) continue;
+      var hw = n._boxW / 2, hh = n._boxH / 2;
+      if (wx >= n._wx - hw && wx <= n._wx + hw && wy >= n._wy - hh && wy <= n._wy + hh) return n;
+    }
+    return null;
+  }
+
+  // ── Pretext preview layout ──
+  function getPreviewLayout(node) {
+    if (pretextCache[node.id]) return pretextCache[node.id];
+    if (!previews || !previews[node.id]) return null;
+    var text = previews[node.id].lead || "";
+    if (!text) return null;
+    if (text.length > 200) text = text.substring(0, 197) + "\u2026";
+    var maxW = node._boxW - 16;
+    if (maxW < 60) maxW = 60;
+    try {
+      var font = PREVIEW_FONT_SIZE + "px " + SERIF;
+      var prepared = prepareWithSegments(text, font);
+      var result = layoutWithLines(prepared, maxW, PREVIEW_LINE_HEIGHT);
+      var lines = result.lines.slice(0, 5);
+      pretextCache[node.id] = { lines: lines, totalH: lines.length * PREVIEW_LINE_HEIGHT, maxWidth: maxW };
+      return pretextCache[node.id];
+    } catch (e) {
+      return fallbackLayout(node, text, maxW);
+    }
+  }
+
+  function fallbackLayout(node, text, maxW) {
+    ctx.font = PREVIEW_FONT_SIZE + "px " + SERIF;
+    var words = text.split(/\s+/), lines = [], cur = "";
+    for (var i = 0; i < words.length && lines.length < 5; i++) {
+      var test = cur ? cur + " " + words[i] : words[i];
+      if (ctx.measureText(test).width > maxW && cur) {
+        lines.push({ text: cur, width: ctx.measureText(cur).width });
+        cur = words[i];
+      } else cur = test;
+    }
+    if (cur && lines.length < 5) lines.push({ text: cur, width: ctx.measureText(cur).width });
+    pretextCache[node.id] = { lines: lines, totalH: lines.length * PREVIEW_LINE_HEIGHT, maxWidth: maxW };
+    return pretextCache[node.id];
+  }
+
+  // ── Editorial layout — adaptive card that sizes to content ──
+  // Produces a layout object with all text pre-measured. The card dimensions
+  // are computed FROM content, not forced to viewport size.
+  var editorialRevealStart = 0; // timestamp for line-by-line reveal
+  var editorialRevealedNodeId = null; // prevent re-animating same node
+
+  function getEditorialLayout(nodeId) {
+    var cacheKey = nodeId + "|adaptive";
+    if (editorialLayoutCache[cacheKey]) return editorialLayoutCache[cacheKey];
+    if (!previews || !previews[nodeId]) return null;
+    var p = previews[nodeId];
+    var text = p.rich || p.lead || "";
+    if (!text) return null;
+
+    // ── Typography constants (screen pixels) ──
+    var titleFontSize = 32;
+    var catFontSize = 11;
+    var bodyFontSize = 17;
+    var pullFontSize = 19;
+    var headerFontSize = 22;
+    var dropCapFontSize = bodyFontSize * 3.4; // actual glyph height is measured below; this is just the requested point size
+    var titleFont = "italic 500 " + titleFontSize + "px " + SERIF;
+    var catFont = "600 " + catFontSize + "px " + MONO;
+    var bodyFont = bodyFontSize + "px " + SERIF;
+    var bodyFontBold = "600 " + bodyFontSize + "px " + SERIF;
+    var bodyFontItalic = "italic " + bodyFontSize + "px " + SERIF;
+    var headerFont = "600 " + headerFontSize + "px " + SERIF;
+    var pullFont = "italic 500 " + pullFontSize + "px " + SERIF;
+    var dropCapFont = "600 " + dropCapFontSize + "px " + SERIF;
+    var bodyLH = Math.round(bodyFontSize * 1.7);
+    var titleLH = Math.round(titleFontSize * 1.3);
+    var pullLH = Math.round(pullFontSize * 1.6);
+    var headerLH = Math.round(headerFontSize * 1.4);
+    var padX = 48;
+    var padY_top = 36;
+    var padY_bottom = 28;
+    var paraGap = Math.round(bodyFontSize * 0.7);
+
+    // ── Decide column mode based on text length ──
+    // IMPORTANT: we decide this BEFORE building preparedParas so the shared paragraph
+    // prep is done at the correct column width. The draggable pull quote in two-column
+    // mode reuses the same prepared segments per column via per-column exclude clipping.
+    var maxCardW = Math.min(W * 0.9, 940);
+    var singleColW = Math.min(W * 0.7, 760); // use the screen
+    var twoColW = 900;
+    var colGap = 44;
+    // Two-column decision is measurement-driven, not char-count-driven: run a trial
+    // layout at the single-column width and see if the natural body height exceeds
+    // the width (i.e. the single-column card would render taller than wide, which
+    // looks off in a magazine context). Two columns balance the aspect ratio.
+    // bodyLH is used to estimate line count from char count without running pretext.js
+    // twice — a cheap approximation good enough for the mode decision.
+    var trialSingleInnerW = Math.min(singleColW, maxCardW - padX * 2);
+    var approxCharsPerLine = Math.max(40, Math.round(trialSingleInnerW / (bodyFontSize * 0.5)));
+    var approxLineCount = Math.ceil(text.length / approxCharsPerLine);
+    var approxBodyH = approxLineCount * bodyLH;
+    // Use two columns when a single-column card body would be at least 80% as tall
+    // as it is wide. Below that, a single column reads cleanly without looking
+    // stretched; above that, a reader loses the sense of column rhythm and the
+    // two-column layout restores magazine proportions.
+    var useColumns = approxBodyH > trialSingleInnerW * 0.8;
+    var cardInnerW, colW;
+
+    if (useColumns) {
+      cardInnerW = Math.min(twoColW, maxCardW - padX * 2);
+      colW = (cardInnerW - colGap) / 2;
+    } else {
+      cardInnerW = trialSingleInnerW;
+      colW = cardInnerW;
+    }
+
+    // ── Title layout ──
+    var titleLines;
+    try {
+      var titleText = p.title || "";
+      var titlePrep = prepareWithSegments(titleText, titleFont);
+      var titleLayout = layoutWithLines(titlePrep, cardInnerW, titleLH);
+      titleLines = titleLayout.lines;
+    } catch(e) {
+      titleLines = [{ text: p.title || "", width: 100 }];
+    }
+
+    // Category badge
+    var category = (p.type || "").replace(/-/g, " ").toUpperCase();
+
+    // ── Find pull quote ──
+    // STRICT: we only emit a pull quote if at least one candidate passes isGoodQuote().
+    // No loose fallbacks, no partial sentences. If nothing passes the filter, this page
+    // gets no pull quote — that's fine, better than a broken fragment.
+    var pullQuoteText = null;
+    var thematicWords = /power|trade|empire|monopol|war|govern|conquer|colon|sovereign|corrupt|collaps|decay|revolt|exploit|violen|destro|expan|piracy|loot|plunder|wealth|domin|loyal|betray|author|control|extract|profit|territory|compan/i;
+    var allQuotes = [];
+    var qm;
+    // Curly quotes — require the span to END with sentence punctuation so we don't
+    // cut partial sentences mid-clause.
+    var curlyRe = /\u201c([^\u201d]{40,220}[.!?])\u201d/g;
+    while ((qm = curlyRe.exec(text)) !== null) allQuotes.push(qm[1]);
+    // Straight quotes — same constraint.
+    var quoteRe = /"([^"]{40,220}[.!?])"/g;
+    while ((qm = quoteRe.exec(text)) !== null) allQuotes.push(qm[1]);
+    // Bold sentences — must start with uppercase and end with sentence punctuation.
+    var boldRe = /\*\*([A-Z][^*]{40,220}[.!?])\*\*/g;
+    while ((qm = boldRe.exec(text)) !== null) allQuotes.push(qm[1]);
+    // Dramatic opening: first COMPLETE sentence of paragraphs 1-4.
+    var paraCandidates = text.split(/\n\n+/).filter(function(p) { return p.trim() && !/^##/.test(p.trim()); });
+    for (var pci = 0; pci < Math.min(paraCandidates.length, 4); pci++) {
+      var stripped = stripMarkup(paraCandidates[pci]).trim();
+      // Require uppercase start + complete sentence terminator followed by space/end
+      var firstSentMatch = stripped.match(/^([A-Z][^.!?]*[.!?])(\s|$)/);
+      if (firstSentMatch) {
+        allQuotes.push(firstSentMatch[1]);
+      }
+    }
+
+    // Strict quote quality filter — rejects fragments, dangling punctuation, name-only
+    // matches, raw markup that leaked through, and meta-references.
+    function isGoodQuote(q) {
+      if (!q) return false;
+      var t = q.trim();
+      if (t.length === 0) return false;
+      var first = t.charAt(0);
+      // Must start with uppercase letter or an opening quote mark
+      if (!/^[A-Z\u201c"]/.test(first)) return false;
+      // Must end with a sentence terminator
+      if (!/[.!?]$/.test(t)) return false;
+      // Reject any dangling punctuation at the end (shouldn't happen given the above,
+      // but double-check for cases where `.` is preceded by `,` etc.)
+      if (/[:;,\(\[—–…]$/.test(t)) return false;
+      // Word count: 8-35 words
+      var wc = t.split(/\s+/).length;
+      if (wc < 8 || wc > 35) return false;
+      // Char count: 40-220
+      if (t.length < 40 || t.length > 220) return false;
+      // Reject leaked markup
+      if (/\*\*|\{\{|\}\}|\[\[|\]\]/.test(t)) return false;
+      // Meta-references
+      if (/\bEleanor\b/i.test(t)) return false;
+      if (/^(See |The highlights |Also |Note |Feeds?:)/i.test(t)) return false;
+      // Reject bare name-like matches ("John Smith")
+      if (/^[A-Z][a-z]+ [A-Z][a-z]+$/.test(t)) return false;
+      return true;
+    }
+
+    // Apply the strict filter to every candidate. Prefer thematic matches; fall back
+    // to the first passing candidate. If nothing passes, the page renders without a
+    // pull quote (intentional — broken quotes are worse than missing ones).
+    var strictQuotes = allQuotes.filter(isGoodQuote);
+    for (var qi = 0; qi < strictQuotes.length; qi++) {
+      if (thematicWords.test(strictQuotes[qi])) { pullQuoteText = strictQuotes[qi]; break; }
+    }
+    if (!pullQuoteText && strictQuotes.length > 0) {
+      pullQuoteText = strictQuotes[0];
+    }
+
+    // ── Parse paragraphs ──
+    var paragraphs = text.split(/\n\n+/).filter(function(p) { return p.trim(); });
+
+    // ── Helper: strip inline markup for measurement ──
+    function stripMarkup(s) {
+      return s.replace(/\*\*([^*]+)\*\*/g, "$1")
+              .replace(/\*([^*]+)\*/g, "$1")
+              .replace(/\{\{([^}]+)\}\}/g, function(_, slug) {
+                return slug.replace(/-/g, " ").replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+              });
+    }
+
+    // Find first non-header paragraph for drop cap
+    var firstBodyParaIdx = -1;
+    for (var fi = 0; fi < paragraphs.length; fi++) {
+      if (!/^##/.test(paragraphs[fi])) { firstBodyParaIdx = fi; break; }
+    }
+
+    // ── Drop cap: extract first letter and remainder of first body paragraph ──
+    // Drop cap is single-column only. In two-column mode we keep the first paragraph
+    // intact so it flows cleanly in the narrower column.
+    var dropCapLetter = null;
+    var dropCapWidth = 0;
+    var dropCapHeight = 0;      // reserved vertical space (used by min-editorial-body-height check)
+    var dcGlyphHeight = 0;      // actual visual glyph height, in pixels
+    var firstParaText = firstBodyParaIdx >= 0 ? stripMarkup(paragraphs[firstBodyParaIdx]) : "";
+    var restFirstPara = firstParaText;
+    // Check for hanging punctuation (opening quote mark)
+    var hangingPunct = null;
+    var hangingPunctWidth = 0;
+    if (!useColumns && firstParaText.length > 0) {
+      var firstChar = firstParaText.charAt(0);
+      // Handle opening quotes — hang them, drop cap the letter after
+      if (firstChar === '\u201c' || firstChar === '"') {
+        hangingPunct = firstChar;
+        ctx.font = bodyFont;
+        hangingPunctWidth = ctx.measureText(hangingPunct).width + 2;
+        if (firstParaText.length > 1) {
+          dropCapLetter = firstParaText.charAt(1).toUpperCase();
+          restFirstPara = firstParaText.slice(2);
+        }
+      } else if (/[A-Za-z]/.test(firstChar)) {
+        dropCapLetter = firstChar.toUpperCase();
+        restFirstPara = firstParaText.slice(1);
+      }
+    }
+    if (dropCapLetter) {
+      // Width: use pretext.js so kerning/advance matches how body text is measured.
+      // pretext.js is a line-layout library so it doesn't expose per-glyph vertical
+      // metrics — we get visual height separately from canvas measureText below.
+      try {
+        var dcPrep = prepareWithSegments(dropCapLetter, dropCapFont);
+        var dcLayoutResult = layoutWithLines(dcPrep, 9999, bodyLH);
+        dropCapWidth = (dcLayoutResult.lines[0] && dcLayoutResult.lines[0].width || 0) + 10;
+      } catch(e) {
+        ctx.font = dropCapFont;
+        dropCapWidth = ctx.measureText(dropCapLetter).width + 10;
+      }
+      // Vertical extent: canvas measureText actualBoundingBox covers the real glyph
+      // pixel box (ascent + descent). Fallback to a font-size approximation if the
+      // browser doesn't report the extended metrics.
+      ctx.font = dropCapFont;
+      var dcMetrics = ctx.measureText(dropCapLetter);
+      var dcAscent = dcMetrics.actualBoundingBoxAscent || dropCapFontSize * 0.72;
+      var dcDescent = dcMetrics.actualBoundingBoxDescent || 0;
+      dcGlyphHeight = dcAscent + dcDescent;
+      // Reserved height for floor-checks (pull quote min-y, drag clamps). Use the
+      // measured glyph height directly — no rounding up to body-line multiples. The
+      // narrow-zone exclusion check uses dcBottomY (pixel-exact) so rounding here
+      // only misaligned integer floors with the real visual bottom.
+      dropCapHeight = Math.ceil(dcGlyphHeight);
+    }
+
+    // ── Determine where to insert the pull quote (between body paragraphs) ──
+    var bodyParaCount = paragraphs.filter(function(p) { return !/^##/.test(p); }).length;
+    var pullAfterPara = -1; // index: pull quote goes AFTER this body paragraph
+    if (pullQuoteText && bodyParaCount >= 3) {
+      pullAfterPara = Math.max(1, Math.floor(bodyParaCount / 3));
+    } else if (pullQuoteText && bodyParaCount === 2) {
+      pullAfterPara = 0;
+    }
+
+    // Strip any leaked markup before layout — the selection logic above can return
+    // raw {{slug}} or **bold** sequences that would render literally otherwise.
+    if (pullQuoteText) pullQuoteText = stripMarkup(pullQuoteText).trim();
+
+    // ── Layout pull quote lines ──
+    // Measurement-driven sizing: lay the quote out at a GENEROUS target max-width,
+    // then read back the actual per-line widths from pretext.js and shrink the box
+    // to hug the content. Each line is centered inside the resulting box. This
+    // replaces the old hardcoded `Math.min(colW * 0.56, 360)` width which produced
+    // boxes that were wider than the text needed — leaving ugly whitespace on the
+    // right and text visibly left-aligned inside a too-wide frame.
+    var pullQuoteLines = null;
+    var pullBarW = 3;
+    var pullPadLeft = 18;
+    var pullPadRight = 18;    // now symmetric with pullPadLeft so centered text has equal breathing room
+    var pullPadTopInner = 6;
+    var pullPadBotInner = 6;
+    // Generous MAX width — only an upper bound for line wrapping. The final box
+    // width is computed from the actual longest rendered line below.
+    var pullQuoteMaxWidth = useColumns
+      ? Math.min(cardInnerW * 0.5, 420)
+      : Math.min(colW * 0.6, 400);
+    var pullInnerMaxW = pullQuoteMaxWidth - pullBarW - pullPadLeft - pullPadRight;
+    var pullQuoteWidth = pullQuoteMaxWidth; // will be overwritten with actual below
+    var pullTotalH = 0;
+    if (pullQuoteText) {
+      try {
+        var pullPrep = prepareWithSegments(pullQuoteText, pullFont);
+        var pullLay = layoutWithLines(pullPrep, pullInnerMaxW, pullLH);
+        pullQuoteLines = pullLay.lines;
+        // ── Text-balance the pull quote lines ──
+        // If the initial layout produced significantly uneven line widths, re-layout
+        // at a narrower maxWidth so the shorter line fills more of the box. Without
+        // this, a long line + short line combo leaves visible blank space around the
+        // shorter line when centered, making the box look "wasted" on the right.
+        // Binary-search downward for a narrower maxWidth that keeps the same line
+        // count but produces more balanced widths (minLineW >= 0.90 * maxLineW).
+        if (pullQuoteLines.length > 1) {
+          var _w0 = pullQuoteLines.map(function(l){ return l.width || 0; });
+          var _maxW0 = Math.max.apply(null, _w0);
+          var _minW0 = Math.min.apply(null, _w0);
+          if (_maxW0 > 0 && _minW0 < _maxW0 * 0.90) {
+            var _lo = _maxW0 * 0.70;
+            var _hi = _maxW0;
+            var _bestLines = pullQuoteLines;
+            for (var _iter = 0; _iter < 8; _iter++) {
+              var _mid = (_lo + _hi) / 2;
+              var _candLay = null;
+              try { _candLay = layoutWithLines(pullPrep, _mid, pullLH); } catch(e) { _candLay = null; }
+              if (!_candLay) break;
+              if (_candLay.lines.length === pullQuoteLines.length) {
+                var _cWidths = _candLay.lines.map(function(l){ return l.width || 0; });
+                var _cMax = Math.max.apply(null, _cWidths);
+                var _cMin = Math.min.apply(null, _cWidths);
+                _bestLines = _candLay.lines;
+                if (_cMin >= _cMax * 0.90) break; // balanced enough
+                _hi = _mid; // keep narrowing
+              } else {
+                _lo = _mid; // line count changed — too narrow, widen
+              }
+            }
+            pullQuoteLines = _bestLines;
+          }
+        }
+      } catch(e) {
+        pullQuoteLines = [{ text: pullQuoteText, width: pullInnerMaxW }];
+      }
+      // Shrink the box to the actual longest rendered line. pretext.js returns
+      // per-line pixel widths on the layout result, so we use those directly.
+      var actualMaxLineW = 0;
+      for (var pli = 0; pli < pullQuoteLines.length; pli++) {
+        var lw = pullQuoteLines[pli].width || 0;
+        if (lw > actualMaxLineW) actualMaxLineW = lw;
+      }
+      // Final box width = actual longest line + symmetric inner padding + left bar.
+      // Never exceed the max; never shrink below a readable minimum (about 10 chars).
+      var minInnerW = bodyFontSize * 6;
+      var finalInnerW = Math.max(minInnerW, Math.min(actualMaxLineW, pullInnerMaxW));
+      pullQuoteWidth = finalInnerW + pullBarW + pullPadLeft + pullPadRight;
+      // Annotate each line with its center-x offset relative to the inner text band.
+      // Rendering below uses line._centerDx + base text x to draw centered text.
+      for (var pli2 = 0; pli2 < pullQuoteLines.length; pli2++) {
+        var thisLineW = pullQuoteLines[pli2].width || 0;
+        pullQuoteLines[pli2]._centerDx = Math.max(0, (finalInnerW - thisLineW) / 2);
+      }
+      pullTotalH = pullQuoteLines.length * pullLH + paraGap * 2; // margins above and below
+    }
+
+    // ── Pre-prepare every paragraph ONCE so drag-time re-layout is cheap ──
+    // preparedParas is an array of structured descriptors we consume both at initial
+    // layout time AND every time the pull quote is dragged. prepareWithSegments is the
+    // expensive call — it shapes the text, measures graphemes, and segments line-break
+    // opportunities. We never re-run it during drag; only layoutNextLine (pure arithmetic
+    // over the prepared segments) runs per frame.
+    var preparedParas = [];
+    for (var pi = 0; pi < paragraphs.length; pi++) {
+      var rawPara = paragraphs[pi];
+      var isHeaderPara = /^##/.test(rawPara);
+      if (isHeaderPara) {
+        var headerText = rawPara.replace(/^##\s*/, "");
+        var headerPlain = stripMarkup(headerText);
+        var hPrep = null;
+        try { hPrep = prepareWithSegments(headerPlain, headerFont); } catch(e) { hPrep = null; }
+        preparedParas.push({
+          kind: "header",
+          text: headerPlain,
+          prepared: hPrep,
+          spaceAbove: Math.round(bodyFontSize * 1.5),
+          spaceBelow: Math.round(bodyFontSize * 0.5),
+        });
+        continue;
+      }
+      var isFirstBody = (pi === firstBodyParaIdx);
+      var pText = isFirstBody ? restFirstPara : stripMarkup(rawPara);
+      var ws = buildWordStyles(rawPara);
+      var wsOffset = 0;
+      if (isFirstBody && dropCapLetter && ws.length > 0) {
+        var skipChars = hangingPunct ? 2 : 1;
+        if (ws[0].word.length <= skipChars) {
+          wsOffset = 1;
+        } else {
+          ws[0] = { word: ws[0].word.slice(skipChars), style: ws[0].style };
+        }
+      }
+      var pPrep = null;
+      try { pPrep = prepareWithSegments(pText, bodyFont); } catch(e) { pPrep = null; }
+      preparedParas.push({
+        kind: "body",
+        text: pText,
+        prepared: pPrep,
+        wordStyles: ws.slice(wsOffset),
+        isFirstBody: isFirstBody,
+      });
+    }
+
+    // ── Helper: lay out one paragraph line-by-line with bidirectional exclusion ──
+    // globalY is the y-coordinate (relative to bodyStartY) where this paragraph's
+    // first line will be placed. dropCapApplies is true only for the very first
+    // body paragraph when a drop cap is rendered. excludeRect is optional.
+    //
+    // Output semantics: each entry in `lines[]` has an EXPLICIT `y` coordinate.
+    // On rows that intersect the exclusion rect we may emit TWO entries sharing the
+    // same y — a LEFT fragment and a RIGHT fragment. The reader's eye sweeps left
+    // fragment → right fragment → next y row, which is the magazine-style flow
+    // Eleanor wants. Returns `{ lines, endY }` where endY is the y of the next
+    // available row (used as the next paragraph's start).
+    var GAP_PX = 14;            // horizontal padding between text fragments and the quote
+    // Minimum fragment width: derived from the current column width. We want at
+    // least ~18% of the column (about 6-8 words at body font size) before we commit
+    // a fragment — anything narrower becomes 1-word orphans. Clamped to a sensible
+    // absolute minimum (~8 * normalSpace) so very narrow columns still wrap cleanly.
+    ctx.font = bodyFont;
+    var _normSpace = ctx.measureText(" ").width;
+    var MIN_FRAGMENT_W = Math.max(colW * 0.18, _normSpace * 8);
+    function layoutParaExcluding(prep, fullText, wordStyles, globalY, dropCapApplies, excludeRect) {
+      var lines = [];
+      if (!prep) {
+        var fall = fallbackTextLayout(fullText, bodyFont, colW, bodyLH);
+        for (var fi = 0; fi < fall.length; fi++) {
+          lines.push({
+            text: fall[fi].text, width: fall[fi].width,
+            x: 0, y: globalY + fi * bodyLH, lineW: colW,
+            narrow: false, side: "full", rowStart: true,
+          });
+        }
+        return { lines: lines, endY: globalY + fall.length * bodyLH };
+      }
+      var totalSegments = (prep.segments && prep.segments.length) || 0;
+      var cursor = { segmentIndex: 0, graphemeIndex: 0 };
+      var y = globalY;
+      var rowIdx = 0;
+      var safetyCap = 400;
+      // Drop cap narrow-zone end in absolute (globalY-relative) coordinates.
+      // The drop cap is pulled up by bodyFontSize*0.15 (see dcScreenY in the render
+      // code), so its visual bottom is at globalY - liftPx + dcGlyphHeight.
+      // A line belongs to the narrow zone while its top is still above dcBottomY.
+      var dcLiftPx = Math.round(bodyFontSize * 0.15);
+      var dcBottomY = globalY - dcLiftPx + dcGlyphHeight;
+      function cursorAdvanced(c, end) {
+        if (!end) return false;
+        return end.segmentIndex !== c.segmentIndex || end.graphemeIndex !== c.graphemeIndex;
+      }
+      function cursorDone(c) {
+        return c.segmentIndex >= totalSegments;
+      }
+      while (safetyCap-- > 0) {
+        if (cursorDone(cursor)) break;
+        // Base available band — shrunk by drop cap while line top is within glyph zone.
+        // No hardcoded line count: the narrow zone ends exactly where the glyph ends,
+        // measured in pixels from actual metrics.
+        var baseX = 0;
+        var baseW = colW;
+        var isNarrow = false;
+        if (dropCapApplies && (y + 1) < dcBottomY) {
+          baseX = dropCapWidth;
+          baseW = colW - dropCapWidth;
+          isNarrow = true;
+        }
+        var intersects = false;
+        if (excludeRect) {
+          var rowTop = y;
+          var rowBot = y + bodyLH;
+          intersects = (rowBot > excludeRect.y + 0.5) && (rowTop < excludeRect.y + excludeRect.h - 0.5);
+        }
+        if (!intersects) {
+          // Full band — single fragment row
+          var res;
+          try { res = layoutNextLine(prep, cursor, baseW); } catch(e) { res = null; }
+          if (!res || !cursorAdvanced(cursor, res.end)) break;
+          lines.push({
+            text: res.text || "", width: res.width || 0,
+            x: baseX, y: y, lineW: baseW,
+            narrow: isNarrow, side: "full", rowStart: true,
+          });
+          cursor = { segmentIndex: res.end.segmentIndex, graphemeIndex: res.end.graphemeIndex };
+          y += bodyLH;
+          rowIdx++;
+          continue;
+        }
+        // Intersecting row — UNIDIRECTIONAL split. Pick whichever side of the quote
+        // has more room and put the full line there. No bidirectional fragments.
+        // This gives a proper float layout: text wraps only on one side of the quote.
+        var bandL = baseX;
+        var bandR = baseX + baseW;
+        var exL = excludeRect.x;
+        var exR = excludeRect.x + excludeRect.w;
+        var clipL = Math.max(bandL, exL);
+        var clipR = Math.min(bandR, exR);
+        var leftFragW = clipL - GAP_PX - bandL;
+        var rightFragW = bandR - (clipR + GAP_PX);
+        // Choose the larger side; ties go to the right (float-left reads worse than float-right).
+        var useLeft = leftFragW > rightFragW;
+        var fragW = useLeft ? leftFragW : rightFragW;
+        var fragX = useLeft ? bandL : (clipR + GAP_PX);
+        var fragSide = useLeft ? "left" : "right";
+        var emittedAny = false;
+        if (fragW >= MIN_FRAGMENT_W && !cursorDone(cursor)) {
+          var fragRes;
+          try { fragRes = layoutNextLine(prep, cursor, fragW); } catch(e) { fragRes = null; }
+          if (fragRes && cursorAdvanced(cursor, fragRes.end) && fragRes.text) {
+            lines.push({
+              text: fragRes.text, width: fragRes.width || 0,
+              x: fragX, y: y, lineW: fragW,
+              narrow: isNarrow, side: fragSide, rowStart: true,
+            });
+            cursor = { segmentIndex: fragRes.end.segmentIndex, graphemeIndex: fragRes.end.graphemeIndex };
+            emittedAny = true;
+          }
+        }
+        if (!emittedAny) {
+          // Fragment too narrow — skip past the quote entirely so we don't loop.
+          var jumpY = excludeRect.y + excludeRect.h + GAP_PX;
+          if (jumpY <= y) jumpY = y + bodyLH;
+          while (y + bodyLH <= jumpY) {
+            y += bodyLH;
+            rowIdx++;
+          }
+          continue;
+        }
+        y += bodyLH;
+        rowIdx++;
+      }
+      return { lines: lines, endY: y };
+    }
+
+    // ── Helper: lay out one paragraph block (header or body) relative to cursorY ──
+    // Shared by both single-column and two-column builders. Writes lines with
+    // EXPLICIT (x, y) column-local coordinates; rendering code reads line.y rather
+    // than accumulating its own y. allowDropCap=true only in single-column mode for
+    // the first body paragraph — two-column mode passes false unconditionally.
+    // atColumnTop=true zeros out spaceAbove for headers that sit at the top of a
+    // column — otherwise headers create an ugly empty gap at the column head.
+    function layoutParaBlock(pp, cursorY, excludeRect, allowDropCap, atColumnTop) {
+      if (pp.kind === "header") {
+        var effectiveSpaceAbove = atColumnTop ? 0 : pp.spaceAbove;
+        var hY = cursorY + effectiveSpaceAbove;
+        var hRaw;
+        try {
+          hRaw = layoutWithLines(pp.prepared, colW, headerLH).lines;
+        } catch(e) {
+          hRaw = fallbackTextLayout(pp.text, headerFont, colW, headerLH);
+        }
+        var hLines = hRaw.map(function(l, li) {
+          return { text: l.text, width: l.width, narrow: false, x: 0, y: hY + li * headerLH, lineW: colW, side: "full", rowStart: true };
+        });
+        return {
+          block: {
+            lines: hLines,
+            isHeader: true,
+            spaceAbove: effectiveSpaceAbove,
+            spaceBelow: pp.spaceBelow,
+            startY: hY,
+            endY: hY + hLines.length * headerLH,
+          },
+          nextY: hY + hLines.length * headerLH + pp.spaceBelow,
+        };
+      }
+      var dropApplies = !!allowDropCap && pp.isFirstBody && !!dropCapLetter;
+      var result = layoutParaExcluding(pp.prepared, pp.text, pp.wordStyles, cursorY, dropApplies, excludeRect);
+      return {
+        block: {
+          lines: result.lines,
+          isDropCapPara: dropApplies,
+          wordStyles: pp.wordStyles,
+          startY: cursorY,
+          endY: result.endY,
+        },
+        nextY: result.endY + paraGap,
+      };
+    }
+
+    // ── Helper: build bodyBlocks from preparedParas with optional exclusion rect ──
+    // Single-column only. Called ONCE initially, and again on every drag frame with
+    // an updated rect. excludeRect is in body-local coordinates (x relative to
+    // column left, y relative to body start).
+    function buildBodyBlocks(excludeRect) {
+      var blocks = [];
+      var cursorY = 0;
+      for (var idx = 0; idx < preparedParas.length; idx++) {
+        var r = layoutParaBlock(preparedParas[idx], cursorY, excludeRect, true, idx === 0);
+        blocks.push(r.block);
+        cursorY = r.nextY;
+      }
+      return { blocks: blocks, height: cursorY };
+    }
+
+    // ── Helper: build two-column blocks with optional card-local exclude rect ──
+    // excludeRect is expressed in CARD-LOCAL coordinates (x measured from the left
+    // edge of the body band, which starts at col1's left at x=0; y measured from the
+    // top of the body area). We clip it per column, convert to column-local coords,
+    // and feed each column its own exclude rect. Columns are filled sequentially.
+    //
+    // targetHalf is the natural body height divided by two — we fill col1 until we
+    // reach or exceed targetHalf, then start spilling into col2. Because exclude
+    // clipping may grow col1 slightly, we use the NATURAL (no-exclude) body height
+    // to pick the split point so the divide stays stable under drag.
+    function buildTwoColumnBlocks(excludeRect, targetHalf) {
+      var col1Left = 0, col1Right = colW;
+      var col2Left = colW + colGap, col2Right = col2Left + colW;
+
+      function intersectCol(rect, colL, colR) {
+        if (!rect) return null;
+        var ol = Math.max(rect.x, colL);
+        var or = Math.min(rect.x + rect.w, colR);
+        if (or <= ol) return null;
+        return { x: ol - colL, y: rect.y, w: or - ol, h: rect.h };
+      }
+
+      var col1Rect = intersectCol(excludeRect, col1Left, col1Right);
+      var col2Rect = intersectCol(excludeRect, col2Left, col2Right);
+
+      var col1Blocks = [], col2Blocks = [];
+      var y1 = 0, y2 = 0;
+      var inCol2 = false;
+
+      for (var pi = 0; pi < preparedParas.length; pi++) {
+        var pp = preparedParas[pi];
+        if (!inCol2) {
+          // atColumnTop true for the very first block in col1 only
+          var r = layoutParaBlock(pp, y1, col1Rect, false, col1Blocks.length === 0);
+          col1Blocks.push(r.block);
+          y1 = r.nextY;
+          // Flip to col2 once we've filled past the target half height. Only switch
+          // after a body paragraph so headers don't end up orphaned at the bottom
+          // of col1 with their body text stranded in col2.
+          if (pp.kind === "body" && y1 >= targetHalf) inCol2 = true;
+        } else {
+          // atColumnTop true for the very first block in col2 only
+          var r2 = layoutParaBlock(pp, y2, col2Rect, false, col2Blocks.length === 0);
+          col2Blocks.push(r2.block);
+          y2 = r2.nextY;
+        }
+      }
+      var bodyH = Math.max(y1, y2);
+      return { col1Blocks: col1Blocks, col2Blocks: col2Blocks, col1H: y1, col2H: y2, height: bodyH };
+    }
+
+    // Initial body layout — no exclusion yet. We need the natural body height so we
+    // can compute a sensible starting position for the draggable quote before doing
+    // the "real" exclusion pass.
+    var pullBlockW = pullQuoteWidth;
+    var pullBlockH = pullQuoteLines ? (pullQuoteLines.length * pullLH + pullPadTopInner + pullPadBotInner + 16) : 0;
+
+    // Build the exclude rect (body-local coords) from a quote position, or null
+    // if there's no quote. The +/- 8 and +16 are the visual margin around the pull
+    // quote block — body text stays clear of this pad ring.
+    var QUOTE_PAD = 8;
+    function makeQuoteRect(qx, qy) {
+      if (!pullQuoteLines || pullQuoteLines.length === 0) return null;
+      return {
+        x: qx - QUOTE_PAD,
+        y: qy - QUOTE_PAD,
+        w: pullBlockW + QUOTE_PAD * 2,
+        h: pullBlockH + QUOTE_PAD * 2,
+      };
+    }
+
+    var bodyBlocks = null;           // single-column only
+    var col1Blocks = null, col2Blocks = null; // two-column only
+    var totalBodyH = 0;
+    var initialQuoteX = 0, initialQuoteY = 0;
+    var targetHalfForTwoCol = 0;     // frozen split point for two-col drag re-layouts
+
+    if (!useColumns) {
+      // ── Single column ──
+      var naturalBuild = buildBodyBlocks(null);
+      var naturalTotalBodyH = naturalBuild.height;
+
+      // Initial pull quote position: FLOAT RIGHT. Hugs the right margin of the column,
+      // text wraps only on the left side (editorial convention). Vertical position is
+      // measured from the body layout: drop-cap zone ends at dropCapHeight, then we
+      // want the reader to see at least one full paragraph of rhythm before the quote
+      // interrupts. Find the end Y of the second body paragraph (index 1 in the
+      // paragraph-only sequence) from the natural layout and anchor the quote there.
+      initialQuoteX = Math.max(0, colW - pullBlockW);
+      var anchorY = dropCapLetter ? dropCapHeight + paraGap : paraGap;
+      var bodyParaSeen = 0;
+      for (var bi0 = 0; bi0 < naturalBuild.blocks.length; bi0++) {
+        var blk0 = naturalBuild.blocks[bi0];
+        if (!blk0.isHeader) {
+          bodyParaSeen++;
+          if (bodyParaSeen >= 2 && typeof blk0.endY === "number") {
+            anchorY = blk0.endY + paraGap;
+            break;
+          }
+        }
+      }
+      initialQuoteY = anchorY;
+      if (initialQuoteY + pullBlockH > naturalTotalBodyH - paraGap) {
+        initialQuoteY = Math.max(
+          dropCapLetter ? dropCapHeight + paraGap : paraGap,
+          naturalTotalBodyH - pullBlockH - paraGap
+        );
+      }
+
+      var bodyBuild = buildBodyBlocks(makeQuoteRect(initialQuoteX, initialQuoteY));
+      bodyBlocks = bodyBuild.blocks;
+      totalBodyH = bodyBuild.height;
+    } else {
+      // ── Two columns ──
+      // First pass: build without exclusion to find the natural body height; pick
+      // the split point as natural/2 so both columns are balanced. This split point
+      // is frozen for all subsequent drag re-layouts — that's what keeps the columns
+      // stable while the user moves the quote around.
+      var naturalFullH = buildTwoColumnBlocks(null, 1e9).col1H; // targetHalf=∞ → all in col1
+      targetHalfForTwoCol = Math.round(naturalFullH / 2);
+
+      // Default quote position: centered horizontally AND vertically. The quote
+      // straddles the column gap and sits in the visual middle of the (soon-to-be)
+      // two-column body, so both columns have a balanced wrap zone.
+      initialQuoteX = Math.max(0, Math.round((cardInnerW - pullBlockW) / 2));
+      initialQuoteY = Math.max(paraGap, Math.round((targetHalfForTwoCol - pullBlockH) / 2));
+      if (pullBlockH > 0 && initialQuoteY + pullBlockH > targetHalfForTwoCol - paraGap) {
+        initialQuoteY = Math.max(paraGap, Math.round(targetHalfForTwoCol - pullBlockH - paraGap));
+      }
+
+      var twoColBuild = buildTwoColumnBlocks(makeQuoteRect(initialQuoteX, initialQuoteY), targetHalfForTwoCol);
+      col1Blocks = twoColBuild.col1Blocks;
+      col2Blocks = twoColBuild.col2Blocks;
+      totalBodyH = twoColBuild.height;
+    }
+
+    // ── Compute total content height ──
+    var headerH = (category ? 18 : 0) + titleLines.length * titleLH + 12 + 18; // cat + title + sep
+    var contentH = headerH + totalBodyH + padY_top + padY_bottom;
+
+    var maxCardH = H * 0.85;
+
+    // ── Final card dimensions ──
+    var cardW = cardInnerW + padX * 2;
+    var cardH = Math.max(300, Math.min(contentH, maxCardH));
+    // Center on screen
+    var cardX = (W - cardW) / 2;
+    var cardY = (H - cardH) / 2;
+
+    var result = {
+      cardW: cardW, cardH: cardH, cardX: cardX, cardY: cardY,
+      title: titleLines, category: category,
+      bodyBlocks: bodyBlocks,
+      totalBodyH: totalBodyH,
+      headerH: headerH,
+      useColumns: useColumns,
+      col1Blocks: useColumns ? col1Blocks : null,
+      col2Blocks: useColumns ? col2Blocks : null,
+      pullQuoteLines: pullQuoteLines,
+      pullQuoteWidth: pullQuoteWidth,
+      pullBarW: pullBarW,
+      pullPadLeft: pullPadLeft,
+      pullPadRight: pullPadRight,
+      pullPadTopInner: pullPadTopInner,
+      pullPadBotInner: pullPadBotInner,
+      pullAfterPara: pullAfterPara,
+      pullBlockW: pullBlockW,
+      pullBlockH: pullBlockH,
+      draggableQuote: !!pullQuoteLines, // now enabled for both single AND two-column modes
+      initialQuoteX: initialQuoteX,
+      initialQuoteY: initialQuoteY,
+      targetHalfForTwoCol: targetHalfForTwoCol,
+      buildBodyBlocks: buildBodyBlocks,           // closure over preparedParas — called on drag (single-col)
+      buildTwoColumnBlocks: buildTwoColumnBlocks, // closure over preparedParas — called on drag (two-col)
+      dropCapLetter: dropCapLetter,
+      dropCapWidth: dropCapWidth,
+      dropCapHeight: dropCapHeight,
+      dcGlyphHeight: dcGlyphHeight,
+      dropCapFont: dropCapFont,
+      hangingPunct: hangingPunct,
+      hangingPunctWidth: hangingPunctWidth,
+      padX: padX, padY_top: padY_top, padY_bottom: padY_bottom,
+      titleFont: titleFont, catFont: catFont, bodyFont: bodyFont, pullFont: pullFont,
+      bodyFontBold: bodyFontBold, bodyFontItalic: bodyFontItalic,
+      headerFont: headerFont, headerLH: headerLH,
+      bodyLH: bodyLH, titleLH: titleLH, pullLH: pullLH,
+      bodyFontSize: bodyFontSize,
+      colW: colW, colGap: colGap, innerW: cardInnerW,
+      paraGap: paraGap,
+      contentH: contentH,
+    };
+
+    editorialLayoutCache[cacheKey] = result;
+    return result;
+  }
+
+  // ── Re-layout body blocks when the draggable pull quote moves ──
+  // Cheap: re-uses the already-prepared paragraph segments. Only layoutNextLine runs.
+  // In two-column mode the exclude rect is in CARD-LOCAL coords (x from col1 left,
+  // y from body top) — the builder clips it to each column automatically.
+  function relayoutEditorialBody(layout) {
+    if (!layout || !layout.draggableQuote) return;
+    var qX = (typeof layout._liveQuoteX === "number") ? layout._liveQuoteX : layout.initialQuoteX;
+    var qY = (typeof layout._liveQuoteY === "number") ? layout._liveQuoteY : layout.initialQuoteY;
+    // Rebuild the exclude rect with the same +/- 8 margin used at initial layout time.
+    var rect = {
+      x: qX - 8,
+      y: qY - 8,
+      w: layout.pullBlockW + 16,
+      h: layout.pullBlockH + 16,
+    };
+    var newHeight;
+    if (layout.useColumns) {
+      if (!layout.buildTwoColumnBlocks) return;
+      var build2 = layout.buildTwoColumnBlocks(rect, layout.targetHalfForTwoCol);
+      layout.col1Blocks = build2.col1Blocks;
+      layout.col2Blocks = build2.col2Blocks;
+      newHeight = build2.height;
+    } else {
+      if (!layout.buildBodyBlocks) return;
+      var build1 = layout.buildBodyBlocks(rect);
+      layout.bodyBlocks = build1.blocks;
+      newHeight = build1.height;
+    }
+    layout.totalBodyH = newHeight;
+    layout.contentH = layout.headerH + newHeight + layout.padY_top + layout.padY_bottom;
+  }
+
+  function fallbackTextLayout(text, font, maxW, lh) {
+    ctx.font = font;
+    var words = text.split(/\s+/), lines = [], cur = "";
+    for (var i = 0; i < words.length; i++) {
+      var test = cur ? cur + " " + words[i] : words[i];
+      if (ctx.measureText(test).width > maxW && cur) {
+        lines.push({ text: cur, width: ctx.measureText(cur).width });
+        cur = words[i];
+      } else cur = test;
+    }
+    if (cur) lines.push({ text: cur, width: ctx.measureText(cur).width });
+    return lines;
+  }
+
+  // ── Determine editorial node ──
+  function updateEditorialState() {
+    var shouldEdit = (forceEditorial || zoom >= ZOOM_EDITORIAL_THRESHOLD) && selectedNodeId;
+    var newEditorialId = shouldEdit ? selectedNodeId : null;
+    var newTarget = newEditorialId ? 1 : 0;
+
+    if (newTarget !== editorialFadeTarget || newEditorialId !== editorialNodeId) {
+      if (newEditorialId && newEditorialId !== editorialNodeId) {
+        editorialLayoutCache = {};
+        editorialQuoteInitialized = false;
+        editorialDraggingQuote = false;
+        editorialDragHoverQuote = false;
+        if (newEditorialId !== editorialRevealedNodeId) {
+          editorialRevealStart = performance.now();
+          editorialRevealedNodeId = newEditorialId;
+        }
+      }
+      if (newTarget === 1 && editorialFadeTarget !== 1) {
+        closeAllPanels();
+        if (newEditorialId !== editorialRevealedNodeId) {
+          editorialRevealStart = performance.now();
+          editorialRevealedNodeId = newEditorialId;
+        }
+      }
+      if (newTarget === 0) {
+        editorialRevealedNodeId = null; // reset on exit so re-entering animates fresh
+        editorialQuoteInitialized = false;
+        editorialDraggingQuote = false;
+        editorialDragHoverQuote = false;
+      }
+      editorialNodeId = newEditorialId || editorialNodeId;
+      editorialFadeTarget = newTarget;
+      editorialFadeStart = editorialFade;
+      editorialFadeStartTime = performance.now();
+    }
+
+    if (editorialFade !== editorialFadeTarget) {
+      var elapsed = performance.now() - editorialFadeStartTime;
+      var t = Math.min(1, elapsed / EDITORIAL_FADE_DURATION);
+      t = 1 - Math.pow(1 - t, 3);
+      editorialFade = editorialFadeStart + (editorialFadeTarget - editorialFadeStart) * t;
+      if (t >= 1) {
+        editorialFade = editorialFadeTarget;
+        if (editorialFade === 0) editorialNodeId = null;
+      }
+    }
+  }
+
+  // ── Draw editorial surface ──
+  // Renders as a SCREEN-SPACE overlay. Card sizes to content, centered.
+  function drawEditorial(ctx) {
+    if (editorialFade <= 0.001) return;
+    var node = nodeById[editorialNodeId || selectedNodeId];
+    if (!node) return;
+
+    var alpha = editorialFade;
+    var layout = getEditorialLayout(node.id);
+    if (!layout) return;
+
+    // Reset per-frame link hitboxes. drawStyledJustifiedLine appends to this as it
+    // renders link-styled words so the mousemove/click handlers can hit-test them.
+    layout._linkHitboxes = [];
+
+    // Initialize the live pull-quote position on first draw per node,
+    // then propagate the module-level state onto the cached layout.
+    if (layout.draggableQuote) {
+      if (!editorialQuoteInitialized) {
+        editorialQuoteX = layout.initialQuoteX;
+        editorialQuoteY = layout.initialQuoteY;
+        editorialQuoteInitialized = true;
+      }
+      layout._liveQuoteX = editorialQuoteX;
+      layout._liveQuoteY = editorialQuoteY;
+    }
+
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // ── Target card bounds from layout (adaptive size) ──
+    var cardW = layout.cardW;
+    var cardH = layout.cardH;
+    var cardX = layout.cardX;
+    var cardY = layout.cardY;
+    var cornerR = 8;
+
+    // Animate from node position to final card position
+    var nodeScreen = worldToScreen(node._wx, node._wy);
+    var nodeScreenW = node._boxW * zoom;
+    var nodeScreenH = node._baseBoxH * zoom;
+    var easeAlpha = 1 - Math.pow(1 - alpha, 3);
+
+    var curX = (nodeScreen[0] - nodeScreenW / 2) + (cardX - (nodeScreen[0] - nodeScreenW / 2)) * easeAlpha;
+    var curY = (nodeScreen[1] - nodeScreenH / 2) + (cardY - (nodeScreen[1] - nodeScreenH / 2)) * easeAlpha;
+    var curW = nodeScreenW + (cardW - nodeScreenW) * easeAlpha;
+    var curH = nodeScreenH + (cardH - nodeScreenH) * easeAlpha;
+
+    // ── Dim overlay ──
+    ctx.globalAlpha = alpha * 0.65;
+    ctx.fillStyle = "#050a0c";
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+
+    // ── Card background with shadow ──
+    ctx.globalAlpha = alpha;
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+    ctx.shadowBlur = 48;
+    ctx.shadowOffsetY = 6;
+    ctx.fillStyle = "#0d1f24";
+    roundRect(ctx, curX, curY, curW, curH, cornerR);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = "#0d1f24";
+    roundRect(ctx, curX, curY, curW, curH, cornerR);
+    ctx.fill();
+
+    // Subtle vignette
+    var vigSize = Math.min(curW, curH) * 0.10;
+    var vigAlpha = 0.12;
+    var vgT = ctx.createLinearGradient(curX + curW / 2, curY, curX + curW / 2, curY + vigSize);
+    vgT.addColorStop(0, "rgba(5, 10, 12, " + vigAlpha + ")");
+    vgT.addColorStop(1, "rgba(5, 10, 12, 0)");
+    ctx.fillStyle = vgT;
+    ctx.fillRect(curX, curY, curW, vigSize);
+    var vgB = ctx.createLinearGradient(curX + curW / 2, curY + curH - vigSize, curX + curW / 2, curY + curH);
+    vgB.addColorStop(0, "rgba(5, 10, 12, 0)");
+    vgB.addColorStop(1, "rgba(5, 10, 12, " + vigAlpha + ")");
+    ctx.fillStyle = vgB;
+    ctx.fillRect(curX, curY + curH - vigSize, curW, vigSize);
+
+    // Category-colored border
+    var cat = node.category;
+    var color = COLORS[cat] || "#baa997";
+    ctx.strokeStyle = rgba(cat, 0.25 * alpha);
+    ctx.lineWidth = 1;
+    roundRect(ctx, curX, curY, curW, curH, cornerR);
+    ctx.stroke();
+
+    // ── Text content (fades in after card starts expanding) ──
+    if (alpha > 0.35) {
+      ctx.save();
+      roundRect(ctx, curX + 2, curY + 2, curW - 4, curH - 4, cornerR - 1);
+      ctx.clip();
+
+      var textAlpha = Math.min(1, (alpha - 0.35) / 0.4);
+
+      // Line-by-line reveal timing
+      var revealElapsed = performance.now() - editorialRevealStart;
+      var revealDelay = 35; // ms between lines
+      var lineIndex = 0; // global counter for reveal stagger
+
+      // Clamp scroll to valid range based on current layout
+      var maxScroll = Math.max(0, (layout.contentH || layout.cardH) - layout.cardH);
+      if (editorialScrollY > maxScroll) editorialScrollY = maxScroll;
+      if (editorialScrollY < 0) editorialScrollY = 0;
+
+      var startX = curX + layout.padX;
+      var startY = curY + layout.padY_top - editorialScrollY;
+      var yPos = startY;
+      // Clip region enforces card bounds — allow drawing past it so scrolling reveals content
+      var bottomBound = curY + curH - layout.padY_bottom + editorialScrollY + 10000;
+
+      // ── Category badge ──
+      if (layout.category) {
+        var catReveal = Math.min(1, Math.max(0, (revealElapsed - lineIndex * revealDelay) / 200));
+        ctx.globalAlpha = textAlpha * catReveal;
+        ctx.font = layout.catFont;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillStyle = color;
+        ctx.fillText(layout.category, startX, yPos);
+        yPos += 20;
+        lineIndex++;
+      }
+
+      // ── Title ──
+      if (layout.title) {
+        ctx.font = layout.titleFont;
+        ctx.fillStyle = DG.cream;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        for (var ti = 0; ti < layout.title.length; ti++) {
+          var titleReveal = Math.min(1, Math.max(0, (revealElapsed - lineIndex * revealDelay) / 200));
+          ctx.globalAlpha = textAlpha * titleReveal;
+          ctx.fillText(layout.title[ti].text, startX, yPos);
+          yPos += layout.titleLH;
+          lineIndex++;
+        }
+        yPos += 14;
+      }
+
+      // ── Separator ──
+      var sepReveal = Math.min(1, Math.max(0, (revealElapsed - lineIndex * revealDelay) / 300));
+      ctx.globalAlpha = textAlpha * sepReveal;
+      ctx.strokeStyle = rgba(cat, 0.15);
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(startX, yPos);
+      // Animated separator draws from left to right
+      ctx.lineTo(startX + (curX + curW - layout.padX - startX) * sepReveal, yPos);
+      ctx.stroke();
+      yPos += 20;
+      lineIndex++;
+
+      var bodyStartY = yPos;
+
+      // ── Body rendering ──
+      ctx.font = layout.bodyFont;
+      ctx.fillStyle = "rgba(250, 240, 230, 0.88)";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+
+      // ── Helper: draw a block (header or body paragraph) at a fixed column base x ──
+      // Used by both single-column (colBaseX = startX) and two-column
+      // (colBaseX = startX for col1, startX + colW + colGap for col2). Reads
+      // explicit (x, y) body-local coordinates off each line — body.x is already
+      // column-local so we add colBaseX + line.x for the screen position. Drop cap
+      // only draws when block.isDropCapPara is true (single-column only).
+      function drawBodyBlock(block, colBaseX) {
+        if (block.isHeader) {
+          ctx.font = layout.headerFont;
+          ctx.fillStyle = DG.cream;
+          for (var li = 0; li < block.lines.length; li++) {
+            var hLine = block.lines[li];
+            var hScreenY = bodyStartY + hLine.y;
+            if (hScreenY + layout.headerLH > bottomBound) break;
+            var lineRevealH = Math.min(1, Math.max(0, (revealElapsed - lineIndex * revealDelay) / 200));
+            ctx.globalAlpha = textAlpha * lineRevealH;
+            ctx.font = layout.headerFont;
+            ctx.fillStyle = DG.cream;
+            ctx.textBaseline = "top";
+            ctx.textAlign = "left";
+            ctx.fillText(hLine.text, colBaseX + (hLine.x || 0), hScreenY);
+            lineIndex++;
+          }
+          return;
+        }
+
+        // Regular body paragraph
+        var isDropPara = block.isDropCapPara && layout.dropCapLetter;
+
+        if (isDropPara) {
+          // Draw drop cap aligned to paragraph's first row
+          var dcReveal = Math.min(1, Math.max(0, (revealElapsed - lineIndex * revealDelay) / 300));
+          ctx.globalAlpha = textAlpha * dcReveal;
+          ctx.font = layout.dropCapFont;
+          ctx.fillStyle = color; // category color for drop cap
+          ctx.textBaseline = "top";
+          ctx.textAlign = "left";
+          var dcX = colBaseX;
+          var dcScreenY = bodyStartY + block.startY - Math.round(layout.bodyFontSize * 0.15);
+          if (layout.hangingPunct) {
+            ctx.font = layout.bodyFont;
+            ctx.fillStyle = "rgba(250, 240, 230, 0.4)";
+            ctx.fillText(layout.hangingPunct, dcX - layout.hangingPunctWidth, bodyStartY + block.startY);
+            ctx.font = layout.dropCapFont;
+            ctx.fillStyle = color;
+          }
+          ctx.fillText(layout.dropCapLetter, dcX, dcScreenY);
+        }
+
+        // Render body lines with rich styling from wordStyles.
+        var wc = 0;
+        var ws = block.wordStyles || [];
+        ctx.font = layout.bodyFont;
+        for (var li2 = 0; li2 < block.lines.length; li2++) {
+          var bLine = block.lines[li2];
+          if (!bLine.text) continue;
+          var lineScreenY = bodyStartY + bLine.y;
+          if (lineScreenY + layout.bodyLH > bottomBound) break;
+          var lineRevealB = Math.min(1, Math.max(0, (revealElapsed - lineIndex * revealDelay) / 200));
+          ctx.globalAlpha = textAlpha * lineRevealB;
+          var lineScreenX = colBaseX + bLine.x;
+          var lineW = bLine.lineW || layout.colW;
+          var lineWords = bLine.text.split(/\s+/).filter(function(w) { return w; });
+          var styledWords = [];
+          for (var wi = 0; wi < lineWords.length; wi++) {
+            var style = (wc < ws.length) ? ws[wc].style : "normal";
+            var slug = (wc < ws.length) ? ws[wc].slug : undefined;
+            styledWords.push({ word: lineWords[wi], style: style, slug: slug });
+            wc++;
+          }
+          var isLastInBlock = (li2 === block.lines.length - 1);
+          var bSide = bLine.side || 'full';
+          var forceLeft = (bSide === 'left' || bSide === 'right'); // fragments around exclusion zone never justify
+          drawStyledJustifiedLine(ctx, styledWords, lineScreenX, lineScreenY, lineW, isLastInBlock, layout, forceLeft);
+          if (bLine.rowStart !== false) lineIndex++;
+        }
+      }
+
+      if (layout.useColumns && layout.col1Blocks && layout.col2Blocks) {
+        // ── Two-column layout — each column draws with its own base x, but body
+        // lines carry column-local (x, y) coords produced by buildTwoColumnBlocks,
+        // which applied per-column exclude clipping. Pull quote is drawn below as
+        // a floating overlay (same path as single column). ──
+        var col1X = startX;
+        var col2X = startX + layout.colW + layout.colGap;
+
+        for (var bi1 = 0; bi1 < layout.col1Blocks.length; bi1++) {
+          drawBodyBlock(layout.col1Blocks[bi1], col1X);
+        }
+        for (var bi2 = 0; bi2 < layout.col2Blocks.length; bi2++) {
+          drawBodyBlock(layout.col2Blocks[bi2], col2X);
+        }
+
+        // Vertical rule between columns
+        var ruleH = (layout.totalBodyH || 40);
+        ctx.globalAlpha = textAlpha * 0.3;
+        ctx.strokeStyle = "rgba(42, 74, 80, 0.25)";
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        var ruleX = startX + layout.colW + layout.colGap / 2;
+        ctx.moveTo(ruleX, bodyStartY);
+        ctx.lineTo(ruleX, bodyStartY + ruleH);
+        ctx.stroke();
+
+        yPos = bodyStartY + (layout.totalBodyH || 0);
+      } else {
+        // ── Single column layout — with drop cap and draggable pull quote ──
+        // Body lines carry explicit (x, y) body-local coords. Screen y = bodyStartY + line.y.
+        for (var bi = 0; bi < layout.bodyBlocks.length; bi++) {
+          drawBodyBlock(layout.bodyBlocks[bi], startX);
+        }
+        yPos = bodyStartY + (layout.totalBodyH || 0);
+      }
+
+      // ── Draw the draggable floating pull quote on top of the reflowed body ──
+      // Runs for BOTH single-column and two-column modes. The quote position is in
+      // card-local coords: single-col x is relative to startX, two-col x is relative
+      // to the inner body band (col1 left). In both cases bodyLocal == quote lives
+      // at (startX + qLocalX, bodyStartY + qLocalY).
+      if (layout.draggableQuote && layout.pullQuoteLines && layout.pullQuoteLines.length > 0) {
+        var qLocalX = (typeof layout._liveQuoteX === "number") ? layout._liveQuoteX : layout.initialQuoteX;
+        var qLocalY = (typeof layout._liveQuoteY === "number") ? layout._liveQuoteY : layout.initialQuoteY;
+        var qScreenX = startX + qLocalX;
+        var qScreenY = bodyStartY + qLocalY;
+        var qW = layout.pullBlockW;
+        var qH = layout.pullBlockH;
+        var lineRevealQ = Math.min(1, Math.max(0, (revealElapsed - 2 * revealDelay) / 300));
+        // Tinted background
+        ctx.globalAlpha = textAlpha * 0.10 * lineRevealQ;
+        ctx.fillStyle = DG.gold;
+        ctx.fillRect(qScreenX - 8, qScreenY - 6, qW + 16, qH + 12);
+        // Gold bar (left accent)
+        ctx.globalAlpha = textAlpha * 0.75 * lineRevealQ;
+        ctx.fillStyle = DG.gold;
+        ctx.fillRect(qScreenX, qScreenY, layout.pullBarW, qH);
+        // Decorative quote marks — sized to fit INSIDE the box padding corners so
+        // they never extend the box beyond maxLineWidth + 2*padX. Glyphs overlap the
+        // padding band (not the text band) and sit at low alpha as ornaments. Using
+        // a modest size tied to the line-height (not the box height) keeps them
+        // proportional to the text even when the box has many lines.
+        var decoFontSize = Math.max(32, Math.min(48, Math.round(layout.pullLH * 1.6)));
+        ctx.globalAlpha = textAlpha * 0.22 * lineRevealQ;
+        ctx.font = "600 " + decoFontSize + "px " + SERIF;
+        ctx.fillStyle = DG.gold;
+        ctx.textBaseline = "top";
+        ctx.textAlign = "left";
+        // Opening glyph: top-left CORNER of box, inside the padding so it doesn't
+        // poke above the box or push the text right. The glyph sits OVER the padding,
+        // slightly overlapping the start of the text band at its low alpha.
+        ctx.fillText("\u201C", qScreenX + layout.pullBarW, qScreenY - Math.round(decoFontSize * 0.18));
+        // Quote text — each line is centered horizontally inside the inner band via
+        // the `_centerDx` offset computed at layout time. This makes the box hug the
+        // content and keeps short lines visually balanced.
+        ctx.globalAlpha = textAlpha * lineRevealQ;
+        ctx.font = layout.pullFont;
+        ctx.fillStyle = "rgba(250, 240, 230, 0.92)";
+        var qTextX = qScreenX + layout.pullBarW + layout.pullPadLeft;
+        var qTextY = qScreenY + layout.pullPadTopInner + 4;
+        for (var qi = 0; qi < layout.pullQuoteLines.length; qi++) {
+          var pLine = layout.pullQuoteLines[qi];
+          var centerDx = (typeof pLine._centerDx === "number") ? pLine._centerDx : 0;
+          ctx.fillText(pLine.text, qTextX + centerDx, qTextY + qi * layout.pullLH);
+        }
+        // Closing glyph: sits just past the LAST line's actual right edge, not the
+        // box's right edge. When the last line is shorter than the box (common with
+        // centered text — e.g. "fluid, and instrumental, not primordial." inside a box
+        // sized to a longer line 1), placing the glyph at the box corner leaves an
+        // ugly gap of whitespace between the line's end and the glyph. Clamp the
+        // glyph's right edge to `last-line end + smallGap`, never exceeding the box's
+        // right edge. Uses _centerDx and width from the layout step above.
+        ctx.globalAlpha = textAlpha * 0.22 * lineRevealQ;
+        ctx.font = "600 " + decoFontSize + "px " + SERIF;
+        ctx.fillStyle = DG.gold;
+        ctx.textBaseline = "alphabetic";
+        ctx.textAlign = "right";
+        var _lastLine = layout.pullQuoteLines[layout.pullQuoteLines.length - 1];
+        var _lastCDx = (_lastLine && typeof _lastLine._centerDx === "number") ? _lastLine._centerDx : 0;
+        var _lastLineW = (_lastLine && _lastLine.width) || 0;
+        // smallGap equals pullPadRight so the glyph preserves its original corner
+        // position when the last line IS the longest line (common single-line case).
+        // For shorter last lines it moves inward by exactly (maxW - lastW) / 2.
+        var _closeGlyphSmallGap = layout.pullPadRight;
+        var _closeGlyphRightX = Math.min(
+          qScreenX + qW,
+          qTextX + _lastCDx + _lastLineW + _closeGlyphSmallGap
+        );
+        ctx.fillText("\u201D", _closeGlyphRightX, qScreenY + qH + Math.round(decoFontSize * 0.18));
+        ctx.textBaseline = "top";
+        ctx.textAlign = "left";
+        // Drag affordance — subtle category-colored border on hover/drag
+        if (editorialDragHoverQuote || editorialDraggingQuote) {
+          ctx.globalAlpha = textAlpha * (editorialDraggingQuote ? 0.85 : 0.55);
+          ctx.strokeStyle = rgba(cat, 1);
+          ctx.lineWidth = 1;
+          roundRect(ctx, qScreenX - 10, qScreenY - 8, qW + 20, qH + 16, 4);
+          ctx.stroke();
+        } else {
+          // Faint baseline border so the quote always reads as a draggable element
+          ctx.globalAlpha = textAlpha * 0.18 * lineRevealQ;
+          ctx.strokeStyle = DG.gold;
+          ctx.lineWidth = 0.5;
+          roundRect(ctx, qScreenX - 10, qScreenY - 8, qW + 20, qH + 16, 4);
+          ctx.stroke();
+        }
+        // Remember absolute rect for hit-testing (screen coordinates, minus scroll)
+        layout._quoteScreenX = qScreenX;
+        layout._quoteScreenY = qScreenY;
+        layout._quoteScreenW = qW;
+        layout._quoteScreenH = qH;
+      }
+
+      // ── Overflow fades + scroll indicator ──
+      var overflow = (layout.contentH || 0) > layout.cardH + 1;
+      if (overflow) {
+        // Bottom fade: hide text running off the bottom (unless scrolled all the way down)
+        if (editorialScrollY < maxScroll - 1) {
+          var fadeH = 30;
+          var fadeY = curY + curH - fadeH - 2;
+          var fadeGrad = ctx.createLinearGradient(0, fadeY, 0, curY + curH - 2);
+          fadeGrad.addColorStop(0, "rgba(13, 31, 36, 0)");
+          fadeGrad.addColorStop(1, "rgba(13, 31, 36, 1)");
+          ctx.globalAlpha = textAlpha;
+          ctx.fillStyle = fadeGrad;
+          ctx.fillRect(curX + 2, fadeY, curW - 4, fadeH);
+        }
+        // Top fade: hide text running off the top (when scrolled)
+        if (editorialScrollY > 1) {
+          var tFadeH = 24;
+          var tFadeY = curY + 2;
+          var tFadeGrad = ctx.createLinearGradient(0, tFadeY, 0, tFadeY + tFadeH);
+          tFadeGrad.addColorStop(0, "rgba(13, 31, 36, 1)");
+          tFadeGrad.addColorStop(1, "rgba(13, 31, 36, 0)");
+          ctx.globalAlpha = textAlpha;
+          ctx.fillStyle = tFadeGrad;
+          ctx.fillRect(curX + 2, tFadeY, curW - 4, tFadeH);
+        }
+        // Scroll indicator — thin gold bar on the right edge
+        var trackH = layout.cardH - 16;
+        var barH = Math.max(24, (layout.cardH / layout.contentH) * trackH);
+        var barY = curY + 8 + (editorialScrollY / layout.contentH) * trackH;
+        ctx.globalAlpha = textAlpha * 0.45;
+        ctx.fillStyle = DG.gold;
+        ctx.fillRect(curX + curW - 5, barY, 2, barH);
+      }
+
+      ctx.restore(); // unclip
+
+      // Keep animating during reveal
+      if (revealElapsed < lineIndex * revealDelay + 200) {
+        scheduleRedraw();
+      }
+    }
+
+    // ── Connected node pills flush below card ──
+    if (alpha > 0.6) {
+      var pillAlpha = Math.min(1, (alpha - 0.6) / 0.3);
+      var nids = neighbors[node.id] || {};
+      var nbrList = [];
+      for (var nid in nids) {
+        if (!hiddenNodes.has(nid) && nodeById[nid]) nbrList.push(nodeById[nid]);
+      }
+      nbrList.sort(function(a, b) { return (b.val || 0) - (a.val || 0); });
+      nbrList = nbrList.slice(0, 12);
+
+      if (nbrList.length > 0) {
+        var pillH = 24;
+        var pillPad = 10;
+        var pillGap = 8;
+        var pillFontSize = 10;
+        var pillRadius = 4;
+
+        var totalPillW = 0;
+        var pillWidths = [];
+        ctx.font = "500 " + pillFontSize + "px " + MONO;
+        for (var pi = 0; pi < nbrList.length; pi++) {
+          var pw = ctx.measureText(nbrList[pi].label).width + pillPad * 2;
+          pillWidths.push(pw);
+          totalPillW += pw + pillGap;
+        }
+        totalPillW -= pillGap;
+
+        var maxPillRow = curW - 20;
+        var pillStartX = curX + curW / 2 - Math.min(totalPillW, maxPillRow) / 2;
+        var pillY = curY + curH + 10;
+        var px = pillStartX;
+
+        ctx.globalAlpha = pillAlpha * alpha;
+        for (var pi = 0; pi < nbrList.length; pi++) {
+          var nbr = nbrList[pi];
+          var nCat = nbr.category;
+          var nColor = COLORS[nCat] || "#baa997";
+          var pw = pillWidths[pi];
+
+          if (px + pw > curX + curW) break;
+
+          ctx.fillStyle = "rgba(13, 31, 36, 0.95)";
+          roundRect(ctx, px, pillY, pw, pillH, pillRadius);
+          ctx.fill();
+          ctx.strokeStyle = nColor;
+          ctx.lineWidth = 1;
+          roundRect(ctx, px, pillY, pw, pillH, pillRadius);
+          ctx.stroke();
+          ctx.font = "500 " + pillFontSize + "px " + MONO;
+          ctx.fillStyle = DG.cream;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(nbr.label, px + pw / 2, pillY + pillH / 2);
+
+          nbr._pillX = px; nbr._pillY = pillY;
+          nbr._pillW = pw; nbr._pillH = pillH;
+          nbr._hasPill = true;
+          nbr._pillScreenCoords = true;
+
+          px += pw + pillGap;
+        }
+      }
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ── Rich text parsing and rendering ──
+  // Parse a text string into segments with style info.
+  // Handles: **bold**, *italic*, {{slug}} (wikilinks rendered in teal)
+  // Nested markup like **{{slug}}** expands the wikilink inside the bold.
+  function expandWikilinks(text) {
+    // Replace {{slug}} with display text (same transform as stripMarkup)
+    return text.replace(/\{\{([^}]+)\}\}/g, function(_, slug) {
+      return slug.replace(/-/g, " ").replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    });
+  }
+  function parseInlineMarkup(text) {
+    var segments = [];
+    var re = /(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(\{\{([^}]+)\}\})/g;
+    var lastIdx = 0;
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > lastIdx) {
+        segments.push({ text: text.slice(lastIdx, m.index), style: "normal" });
+      }
+      if (m[1]) {
+        // Bold — expand any nested {{wikilinks}} inside the bold text
+        segments.push({ text: expandWikilinks(m[2]), style: "bold" });
+      } else if (m[3]) {
+        // Italic — expand any nested {{wikilinks}} inside
+        segments.push({ text: expandWikilinks(m[4]), style: "italic" });
+      } else if (m[5]) {
+        var slug = m[6];
+        var display = slug.replace(/-/g, " ").replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        segments.push({ text: display, style: "link", slug: slug });
+      }
+      lastIdx = m.index + m[0].length;
+    }
+    if (lastIdx < text.length) {
+      segments.push({ text: text.slice(lastIdx), style: "normal" });
+    }
+    if (segments.length === 0) {
+      segments.push({ text: text, style: "normal" });
+    }
+    return segments;
+  }
+
+  // Build a flat array of {word, style, slug?} from a raw markup paragraph.
+  // Must stay in sync with stripMarkup word count — when markup like {{slug}}
+  // is immediately followed by punctuation (no space), the adjacent chars must
+  // merge into the last word of the markup segment, not become a separate token.
+  // Words that come from a {{wikilink}} segment carry the slug so hit-testing
+  // can navigate to the target page.
+  function buildWordStyles(rawPara) {
+    var segments = parseInlineMarkup(rawPara);
+    var words = [];
+    // Track whether the previous segment ended at a markup boundary (no trailing space)
+    var prevSegEndedTight = false;
+    for (var si = 0; si < segments.length; si++) {
+      var seg = segments[si];
+      var parts = seg.text.split(/\s+/);
+      var firstPart = true;
+      for (var pi = 0; pi < parts.length; pi++) {
+        if (!parts[pi]) { firstPart = false; continue; }
+        // If previous segment ended tight (no space) and this is the first word
+        // of the current segment, merge it into the previous word
+        if (firstPart && prevSegEndedTight && words.length > 0) {
+          words[words.length - 1].word += parts[pi];
+          firstPart = false;
+          continue;
+        }
+        words.push({ word: parts[pi], style: seg.style, slug: seg.slug });
+        firstPart = false;
+      }
+      // Check if this segment text ends without trailing whitespace AND the
+      // original raw text continues immediately (no space before next markup)
+      prevSegEndedTight = seg.text.length > 0 && !/\s$/.test(seg.text) && seg.style !== "normal";
+      // For normal segments, check if text ends tight (no trailing space before next markup)
+      if (seg.style === "normal" && seg.text.length > 0 && !/\s$/.test(seg.text)) {
+        prevSegEndedTight = true;
+      }
+    }
+    return words;
+  }
+
+  // Get the font string for a given style from a layout object
+  function fontForStyle(layout, style) {
+    if (style === "bold") return layout.bodyFontBold;
+    if (style === "italic") return layout.bodyFontItalic;
+    return layout.bodyFont;
+  }
+
+  // Get the fill color for a given style
+  function colorForStyle(style) {
+    if (style === "link") return DG.teal;
+    return "rgba(250, 240, 230, 0.88)";
+  }
+
+  // Draw a justified line using pre-parsed styled words.
+  function drawStyledJustifiedLine(ctx, styledWords, x, y, targetW, isLastLine, layout, forceLeft) {
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    if (styledWords.length === 0) return;
+
+    // Measure all words
+    var wordWidths = [];
+    var totalWordW = 0;
+    for (var i = 0; i < styledWords.length; i++) {
+      ctx.font = fontForStyle(layout, styledWords[i].style);
+      var ww = ctx.measureText(styledWords[i].word).width;
+      wordWidths.push(ww);
+      totalWordW += ww;
+    }
+
+    // Natural width with normal spaces — used to decide whether justification would
+    // stretch gaps into ugly "rivers." Instead of a binary fillRatio threshold we
+    // compute the per-gap stretch the justifier would introduce, and only bail out
+    // when that stretch would exceed a multiplicative cap relative to the normal
+    // space width. This is continuous, not threshold-based: a line that's a tiny
+    // bit short gets justified cleanly; a line that's dramatically short falls back
+    // to left-alignment.
+    ctx.font = layout.bodyFont;
+    var normalSpace = ctx.measureText(" ").width;
+    var gapCountPre = Math.max(0, styledWords.length - 1);
+    var requiredGapW = gapCountPre > 0 ? (targetW - totalWordW) / gapCountPre : 0;
+    // Upper bound for a gap before it reads as a "river": 1.8x the natural space width.
+    // Below this cap, the justifier fills naturally; above it, readers see white channels
+    // running down the column. 1.8x is within the range browsers use for text-justify.
+    var maxGapW = normalSpace * 1.8;
+
+    // Don't justify short fragments, last lines, or lines where the required gap exceeds
+    // the river cap. Short word counts (<4) never justify — too little to distribute.
+    var noJustify = forceLeft || isLastLine || styledWords.length < 4 || requiredGapW > maxGapW;
+
+    // Record a link hit-target if this word is a wikilink. cx/wwidth are the exact
+    // pixel bounds used for ctx.fillText, so screen-coord hit testing matches the
+    // visible text perfectly.
+    function recordLinkHit(w, cx, wwidth) {
+      if (!layout || !layout._linkHitboxes) return;
+      if (w.style !== "link" || !w.slug) return;
+      layout._linkHitboxes.push({
+        x: cx, y: y, w: wwidth, h: layout.bodyLH,
+        slug: w.slug, display: w.word,
+      });
+    }
+
+    if (styledWords.length <= 1 || noJustify) {
+      var nudge = 0;
+      var firstText = styledWords[0].word;
+      ctx.font = fontForStyle(layout, styledWords[0].style);
+      if (firstText.length > 0 && /["\u201c\u2018'(]/.test(firstText.charAt(0))) {
+        nudge = -ctx.measureText(firstText.charAt(0)).width * 0.45;
+      }
+      var cx = x + nudge;
+      for (var i = 0; i < styledWords.length; i++) {
+        if (i > 0) cx += normalSpace;
+        ctx.font = fontForStyle(layout, styledWords[i].style);
+        ctx.fillStyle = colorForStyle(styledWords[i].style);
+        ctx.fillText(styledWords[i].word, cx, y);
+        recordLinkHit(styledWords[i], cx, wordWidths[i]);
+        cx += wordWidths[i];
+      }
+      return;
+    }
+
+    // Justified: compute gap width
+    var gapCount = styledWords.length - 1;
+    var gapW = gapCount > 0 ? (targetW - totalWordW) / gapCount : 0;
+    if (gapW > normalSpace * 3) {
+      var cx2 = x;
+      for (var i = 0; i < styledWords.length; i++) {
+        if (i > 0) cx2 += normalSpace;
+        ctx.font = fontForStyle(layout, styledWords[i].style);
+        ctx.fillStyle = colorForStyle(styledWords[i].style);
+        ctx.fillText(styledWords[i].word, cx2, y);
+        recordLinkHit(styledWords[i], cx2, wordWidths[i]);
+        cx2 += wordWidths[i];
+      }
+      return;
+    }
+
+    // Optical margin for first word
+    var startX = x;
+    var firstWord = styledWords[0].word;
+    ctx.font = fontForStyle(layout, styledWords[0].style);
+    if (firstWord.length > 0 && /["\u201c\u2018'(]/.test(firstWord.charAt(0))) {
+      startX -= ctx.measureText(firstWord.charAt(0)).width * 0.45;
+    }
+    var cx = startX;
+    for (var i = 0; i < styledWords.length; i++) {
+      ctx.font = fontForStyle(layout, styledWords[i].style);
+      ctx.fillStyle = colorForStyle(styledWords[i].style);
+      ctx.fillText(styledWords[i].word, cx, y);
+      recordLinkHit(styledWords[i], cx, wordWidths[i]);
+      cx += wordWidths[i] + gapW;
+    }
+  }
+
+  // Draw a line of editorial text with inline formatting (fallback for non-justified contexts)
+  function drawEditorialLine(ctx, text, x, y, maxW, layout) {
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    if (!layout) {
+      ctx.fillStyle = "rgba(250, 240, 230, 0.88)";
+      ctx.fillText(text, x, y);
+      return;
+    }
+    var segments = parseInlineMarkup(text);
+    var cx = x;
+    for (var i = 0; i < segments.length; i++) {
+      ctx.font = fontForStyle(layout, segments[i].style);
+      ctx.fillStyle = colorForStyle(segments[i].style);
+      ctx.fillText(segments[i].text, cx, y);
+      cx += ctx.measureText(segments[i].text).width;
+    }
+  }
+
+  // ── Pill hit testing for editorial mode (pills are in screen coords) ──
+  function pillAt(sx, sy) {
+    if (editorialFade < 0.5 || !editorialNodeId) return null;
+    var nids = neighbors[editorialNodeId] || {};
+    for (var nid in nids) {
+      var n = nodeById[nid];
+      if (!n || !n._hasPill) continue;
+      if (sx >= n._pillX && sx <= n._pillX + n._pillW &&
+          sy >= n._pillY && sy <= n._pillY + n._pillH) {
+        return n;
+      }
+    }
+    return null;
+  }
+
+  // ── Edge weights ──
+  function computeEdgeWeights(graphEdges) {
+    edgeWeights = {};
+    for (var i = 0; i < graphEdges.length; i++) {
+      var e = graphEdges[i], key = [e.source, e.target].sort().join("|");
+      edgeWeights[key] = (edgeWeights[key] || 0) + 1;
+    }
+  }
+  function getEdgeWeight(s, t) { return edgeWeights[[s, t].sort().join("|")] || 1; }
+
+  // ── Draw loop ──
+  var needsRedraw = false;
+  function scheduleRedraw() {
+    if (!needsRedraw) { needsRedraw = true; requestAnimationFrame(drawFrame); }
+  }
+
+  function updateEditorialChrome() {
+    var inEditorial = editorialFade > 0.5;
+    var legendEl = document.querySelector(".map-legend");
+    var statsEl = document.getElementById("map-stats");
+    var helpEl = document.querySelector(".map-help");
+    var minimapEl = document.querySelector(".map-minimap");
+    var navToggleEl = document.querySelector(".map-nav-toggle");
+    [legendEl, statsEl, helpEl, minimapEl, navToggleEl].forEach(function(el) {
+      if (!el) return;
+      el.style.transition = "opacity 0.3s ease";
+      el.style.opacity = inEditorial ? "0" : "1";
+      el.style.pointerEvents = inEditorial ? "none" : "auto";
+    });
+  }
+
+  function drawFrame() {
+    needsRedraw = false;
+    pulsePhase = (performance.now() / 1200) % (Math.PI * 2);
+    updateEditorialState();
+    updateEditorialChrome();
+    draw();
+    drawMinimap();
+    updateHudZoom();
+    // Keep animating during editorial fade transition
+    if (editorialFade !== editorialFadeTarget) scheduleRedraw();
+  }
+
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = DG.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle grid pattern
+    ctx.save();
+    ctx.translate(panX, panY);
+    ctx.scale(zoom, zoom);
+    drawGrid(ctx);
+
+    var inEditorial = editorialFade > 0.001;
+    var showPreviews = zoom > ZOOM_PREVIEW_THRESHOLD && !inEditorial;
+    var effectiveHoverId = hoverId || searchHighlightId;
+
+    // Update box heights for preview mode
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (hiddenNodes.has(n.id)) continue;
+      if (showPreviews) {
+        var pv = getPreviewLayout(n);
+        var extraH = pv && pv.totalH > 0 ? Math.min(pv.totalH + 8, PREVIEW_MAX_H) : 0;
+        n._boxH = n._baseBoxH + extraH;
+      } else {
+        n._boxH = n._baseBoxH;
+      }
+    }
+
+    // ── Fade dungeon elements for editorial transition ──
+    var dungeonAlpha = inEditorial ? Math.max(0, 1 - editorialFade) : 1;
+    if (inEditorial) ctx.globalAlpha = dungeonAlpha;
+
+    // ── Edges ──
+    var dimE = [], normE = [], highE = [];
+    for (var i = 0; i < edges.length; i++) {
+      var e = edges[i];
+      if (hiddenNodes.has(e.source) || hiddenNodes.has(e.target)) continue;
+      var sn = nodeById[e.source], tn = nodeById[e.target];
+      if (!sn || !tn) continue;
+      var isHigh = effectiveHoverId && (e.source === effectiveHoverId || e.target === effectiveHoverId);
+      var isDim = effectiveHoverId && !isHigh;
+      if (isDim) dimE.push(e); else if (isHigh) highE.push(e); else normE.push(e);
+    }
+
+    // Dim edges
+    for (var i = 0; i < dimE.length; i++) {
+      ctx.strokeStyle = DG.textGhost;
+      ctx.lineWidth = 0.5 / zoom;
+      drawEdge(ctx, nodeById[dimE[i].source], nodeById[dimE[i].target], 1);
+    }
+
+    // Normal edges
+    for (var i = 0; i < normE.length; i++) {
+      var e = normE[i], sn = nodeById[e.source], tn = nodeById[e.target];
+      var dist = Math.abs(sn.row - tn.row) + Math.abs(sn.col - tn.col);
+      var weight = getEdgeWeight(e.source, e.target);
+      var alpha = dist <= 2 ? 0.2 : dist <= 4 ? 0.1 : 0.05;
+      alpha = Math.min(0.35, alpha * (1 + (weight - 1) * 0.5));
+      ctx.strokeStyle = tealRgba(alpha);
+      ctx.lineWidth = ((dist <= 2 ? 1.0 : 0.6) * (1 + (weight - 1) * 0.6)) / zoom;
+      drawEdge(ctx, sn, tn, weight);
+    }
+
+    // Highlighted edges with glow
+    for (var i = 0; i < highE.length; i++) {
+      var e = highE[i], weight = getEdgeWeight(e.source, e.target);
+      var sn = nodeById[e.source], tn = nodeById[e.target];
+      var pulse = 0.6 + 0.2 * Math.sin(pulsePhase);
+
+      // Glow layer
+      ctx.strokeStyle = DG.tealDim;
+      ctx.lineWidth = (5 + (weight - 1) * 2) / zoom;
+      drawEdge(ctx, sn, tn, weight);
+
+      // Main line
+      ctx.strokeStyle = DG.teal;
+      ctx.lineWidth = (1.5 + (weight - 1) * 0.8) / zoom;
+      drawEdge(ctx, sn, tn, weight);
+    }
+
+    // ── Nodes ──
+    for (var i = 0; i < nodes.length; i++) {
+      if (!hiddenNodes.has(nodes[i].id)) drawNode(ctx, nodes[i], showPreviews, effectiveHoverId);
+    }
+
+    // ── Reset alpha after dungeon elements ──
+    if (inEditorial) ctx.globalAlpha = 1;
+
+    // ── Editorial reading surface (drawn over dungeon) ──
+    if (inEditorial) {
+      drawEditorial(ctx);
+    }
+
+    ctx.restore();
+
+    // Request continuous redraw when hovering (for pulse animation)
+    if (effectiveHoverId) requestAnimationFrame(function() { scheduleRedraw(); });
+  }
+
+  function drawGrid(ctx) {
+    // Subtle dot grid for orientation
+    if (zoom < 0.4) return;
+    var step = 200;
+    var tl = screenToWorld(0, 0), br = screenToWorld(W, H);
+    var startX = Math.floor(tl[0] / step) * step;
+    var startY = Math.floor(tl[1] / step) * step;
+    ctx.fillStyle = "rgba(42, 74, 80, 0.12)";
+    for (var x = startX; x < br[0]; x += step) {
+      for (var y = startY; y < br[1]; y += step) {
+        ctx.fillRect(x - 0.5, y - 0.5, 1, 1);
+      }
+    }
+  }
+
+  function drawEdge(ctx, sn, tn, weight) {
+    var dx = tn._wx - sn._wx, dy = tn._wy - sn._wy;
+    var sHW = sn._boxW / 2, tHW = tn._boxW / 2, sHH = sn._boxH / 2, tHH = tn._boxH / 2;
+    if (weight >= 2) ctx.setLineDash([]);
+    else ctx.setLineDash([4 / zoom, 3 / zoom]);
+
+    if (sn.row === tn.row) {
+      var fx = dx > 0 ? sn._wx + sHW : sn._wx - sHW;
+      var tx = dx > 0 ? tn._wx - tHW : tn._wx + tHW;
+      ctx.beginPath(); ctx.moveTo(fx, sn._wy); ctx.lineTo(tx, tn._wy); ctx.stroke();
+    } else if (sn.col === tn.col) {
+      var fy = dy > 0 ? sn._wy + sHH : sn._wy - sHH;
+      var ty = dy > 0 ? tn._wy - tHH : tn._wy + tHH;
+      ctx.beginPath(); ctx.moveTo(sn._wx, fy); ctx.lineTo(tn._wx, ty); ctx.stroke();
+    } else {
+      var fy = dy > 0 ? sn._wy + sHH : sn._wy - sHH;
+      var tx = dx > 0 ? tn._wx - tHW : tn._wx + tHW;
+      ctx.beginPath(); ctx.moveTo(sn._wx, fy); ctx.lineTo(sn._wx, tn._wy); ctx.lineTo(tx, tn._wy); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  function drawNode(ctx, node, showPreviews, effectiveHoverId) {
+    var cat = node.category;
+    var color = COLORS[cat] || "#baa997";
+    var brk = BRACKETS[cat] || ["[", "]"];
+    var label = brk[0] + " " + node.label + " " + brk[1];
+    var focused = !effectiveHoverId || effectiveHoverId === node.id || (neighbors[effectiveHoverId] && neighbors[effectiveHoverId][node.id]);
+    var isHovered = hoverId === node.id;
+    var isSearchMatch = searchHighlightId === node.id;
+    var isSelected = selectedNodeId === node.id;
+
+    var wx = node._wx, wy = node._wy;
+    var hw = node._boxW / 2, hh = node._boxH / 2;
+    var pulse = 0.7 + 0.3 * Math.sin(pulsePhase);
+    var r = 2;
+
+    // ── Glow effect for hovered/selected nodes ──
+    if ((isHovered || isSelected) && focused) {
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 16 / zoom;
+      ctx.fillStyle = "rgba(0,0,0,0)";
+      roundRect(ctx, wx - hw - 2, wy - hh - 2, node._boxW + 4, node._boxH + 4, r + 1);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    // Pulsing glow for connected neighbors when hovering
+    if (effectiveHoverId && effectiveHoverId !== node.id && focused && (neighbors[effectiveHoverId] && neighbors[effectiveHoverId][node.id])) {
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = (8 * pulse) / zoom;
+      ctx.fillStyle = "rgba(0,0,0,0)";
+      roundRect(ctx, wx - hw - 1, wy - hh - 1, node._boxW + 2, node._boxH + 2, r);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    // Box background
+    if (isHovered || isSearchMatch || isSelected) {
+      ctx.fillStyle = DG.surface;
+    } else {
+      ctx.fillStyle = focused ? DG.surface : DG.bg;
+    }
+    roundRect(ctx, wx - hw, wy - hh, node._boxW, node._boxH, r);
+    ctx.fill();
+
+    // Border
+    var bAlpha = focused ? 0.6 : 0.08;
+    if (isSelected) { ctx.strokeStyle = DG.gold; ctx.lineWidth = 2 / zoom; }
+    else if (isHovered || isSearchMatch) { ctx.strokeStyle = rgba(cat, 0.8); ctx.lineWidth = 1.5 / zoom; }
+    else { ctx.strokeStyle = rgba(cat, bAlpha); ctx.lineWidth = 1 / zoom; }
+    roundRect(ctx, wx - hw, wy - hh, node._boxW, node._boxH, r);
+    ctx.stroke();
+
+    // Label
+    ctx.font = ((isHovered || isSelected) ? "600 " : "500 ") + FONT_SIZE + "px " + MONO;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+
+    var bracketColor = focused ? rgba(cat, 0.7) : rgba(cat, 0.1);
+    var textColor = focused ? DG.cream : DG.textGhost;
+    if (isHovered || isSelected) textColor = DG.gold;
+
+    var bracketL = brk[0] + " ", bracketR = " " + brk[1];
+    var fullW = ctx.measureText(label).width;
+    var blW = ctx.measureText(bracketL).width;
+    var innerW = ctx.measureText(node.label).width;
+    var labelY = showPreviews ? wy - hh + (node._baseBoxH / 2) : wy;
+    var startX = wx - fullW / 2;
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = bracketColor;
+    ctx.fillText(bracketL, startX, labelY);
+    ctx.fillStyle = textColor;
+    ctx.fillText(node.label, startX + blW, labelY);
+    ctx.fillStyle = bracketColor;
+    ctx.fillText(bracketR, startX + blW + innerW, labelY);
+
+    // Semantic zoom preview
+    if (showPreviews && focused) {
+      var pv = getPreviewLayout(node);
+      if (pv && pv.lines.length > 0) {
+        ctx.save();
+        roundRect(ctx, wx - hw, wy - hh, node._boxW, node._boxH, r);
+        ctx.clip();
+
+        // Separator
+        ctx.strokeStyle = rgba(cat, 0.15);
+        ctx.lineWidth = 0.5 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(wx - hw + 6, wy - hh + node._baseBoxH);
+        ctx.lineTo(wx + hw - 6, wy - hh + node._baseBoxH);
+        ctx.stroke();
+
+        ctx.font = PREVIEW_FONT_SIZE + "px " + SERIF;
+        ctx.textAlign = "left"; ctx.textBaseline = "top";
+        ctx.fillStyle = focused ? "rgba(250, 240, 230, 0.55)" : "rgba(250, 240, 230, 0.08)";
+        var sy = wy - hh + node._baseBoxH + 2, sx = wx - hw + 8;
+        for (var li = 0; li < pv.lines.length; li++) {
+          ctx.fillText(pv.lines[li].text, sx, sy + li * PREVIEW_LINE_HEIGHT);
+        }
+
+        // Fade gradient at bottom
+        var fadeH = 20;
+        var fadeY = wy + hh - fadeH;
+        var fadeGrad = ctx.createLinearGradient(0, fadeY, 0, wy + hh);
+        fadeGrad.addColorStop(0, "rgba(19, 32, 36, 0)");
+        fadeGrad.addColorStop(1, "rgba(19, 32, 36, 1)");
+        ctx.fillStyle = fadeGrad;
+        ctx.fillRect(wx - hw, fadeY, node._boxW, fadeH);
+
+        ctx.restore();
+      }
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  // ── Layout ──
+  function layoutNodes() {
+    ctx.font = "500 " + FONT_SIZE + "px " + MONO;
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i], brk = BRACKETS[n.category] || ["[", "]"];
+      var label = brk[0] + " " + n.label + " " + brk[1];
+      var tw;
+      try {
+        var prepared = prepareWithSegments(label, "500 " + FONT_SIZE + "px " + MONO);
+        var result = layoutWithLines(prepared, 9999, FONT_SIZE + 4);
+        tw = result.lines.length > 0 ? result.lines[0].width : ctx.measureText(label).width;
+      } catch (e) { tw = ctx.measureText(label).width; }
+      n._boxW = tw + 16;
+      n._baseBoxH = FONT_SIZE + 16;
+      n._boxH = n._baseBoxH;
+      n._wx = n.col * CELL_W;
+      n._wy = n.row * CELL_H;
+    }
+    pretextCache = {};
+  }
+
+  function centerView() {
+    if (!nodes.length) return;
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (hiddenNodes.has(n.id)) continue;
+      minX = Math.min(minX, n._wx - n._boxW / 2);
+      maxX = Math.max(maxX, n._wx + n._boxW / 2);
+      minY = Math.min(minY, n._wy - n._boxH / 2);
+      maxY = Math.max(maxY, n._wy + n._boxH / 2);
+    }
+    if (minX === Infinity) return;
+    var cw = maxX - minX, ch = maxY - minY, pad = 80;
+    zoom = Math.min((W - pad * 2) / cw, (H - pad * 2) / ch, 1.5);
+    zoom = Math.max(zoom, 0.15);
+    panX = W / 2 - (minX + cw / 2) * zoom;
+    panY = H / 2 - (minY + ch / 2) * zoom;
+  }
+
+  function resize() {
+    // Map root starts at top of viewport (no masthead)
+    canvas.parentElement.style.top = "0px";
+    var rect = canvas.parentElement.getBoundingClientRect();
+    W = rect.width; H = rect.height;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+  }
+
+  // ── Mini-map ──
+  var mmCvs = document.getElementById("minimap-canvas");
+  var mmCtx = mmCvs.getContext("2d");
+  var MM_W = 160, MM_H = 100;
+  var mmTransform = { minX: 0, minY: 0, scale: 1, pad: 12 };
+
+  function setupMinimap() {
+    mmCvs.width = MM_W * dpr; mmCvs.height = MM_H * dpr;
+    mmCvs.style.width = MM_W + "px"; mmCvs.style.height = MM_H + "px";
+  }
+
+  function drawMinimap() {
+    if (!nodes.length) return;
+    mmCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    mmCtx.clearRect(0, 0, MM_W, MM_H);
+    mmCtx.fillStyle = DG.surface;
+    mmCtx.fillRect(0, 0, MM_W, MM_H);
+
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (var i = 0; i < nodes.length; i++) {
+      minX = Math.min(minX, nodes[i]._wx); maxX = Math.max(maxX, nodes[i]._wx);
+      minY = Math.min(minY, nodes[i]._wy); maxY = Math.max(maxY, nodes[i]._wy);
+    }
+    if (minX === Infinity) return;
+    var pad = 12, cw = maxX - minX || 1, ch = maxY - minY || 1;
+    var scale = Math.min((MM_W - pad * 2) / cw, (MM_H - pad * 2) / ch);
+    mmTransform.minX = minX; mmTransform.minY = minY; mmTransform.scale = scale; mmTransform.pad = pad;
+    function mx(wx) { return pad + (wx - minX) * scale; }
+    function my(wy) { return pad + (wy - minY) * scale; }
+
+    // Edges
+    mmCtx.strokeStyle = "rgba(42, 157, 143, 0.1)";
+    mmCtx.lineWidth = 0.5;
+    for (var i = 0; i < edges.length; i++) {
+      var e = edges[i];
+      if (hiddenNodes.has(e.source) || hiddenNodes.has(e.target)) continue;
+      var sn = nodeById[e.source], tn = nodeById[e.target];
+      if (!sn || !tn) continue;
+      mmCtx.beginPath(); mmCtx.moveTo(mx(sn._wx), my(sn._wy));
+      mmCtx.lineTo(mx(tn._wx), my(tn._wy)); mmCtx.stroke();
+    }
+
+    // Nodes
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (hiddenNodes.has(n.id)) continue;
+      mmCtx.fillStyle = COLORS[n.category] || "#baa997";
+      mmCtx.globalAlpha = (hoverId === n.id || selectedNodeId === n.id) ? 1 : 0.6;
+      mmCtx.fillRect(mx(n._wx) - 1.5, my(n._wy) - 1.5, 3, 3);
+    }
+    mmCtx.globalAlpha = 1;
+
+    // Viewport
+    var tl = screenToWorld(0, 0), br = screenToWorld(W, H);
+    mmCtx.strokeStyle = DG.gold;
+    mmCtx.lineWidth = 1;
+    mmCtx.strokeRect(mx(tl[0]), my(tl[1]), mx(br[0]) - mx(tl[0]), my(br[1]) - my(tl[1]));
+  }
+
+  // ── Minimap interaction ──
+  var mmDragging = false;
+
+  function minimapToWorld(mmX, mmY) {
+    var t = mmTransform;
+    var worldX = (mmX - t.pad) / t.scale + t.minX;
+    var worldY = (mmY - t.pad) / t.scale + t.minY;
+    return [worldX, worldY];
+  }
+
+  function panFromMinimap(e) {
+    var rect = mmCvs.getBoundingClientRect();
+    var mmX = (e.clientX - rect.left) * (MM_W / rect.width);
+    var mmY = (e.clientY - rect.top) * (MM_H / rect.height);
+    var world = minimapToWorld(mmX, mmY);
+    panX = W / 2 - world[0] * zoom;
+    panY = H / 2 - world[1] * zoom;
+    scheduleRedraw();
+  }
+
+  mmCvs.addEventListener("mousedown", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    mmDragging = true;
+    panFromMinimap(e);
+  });
+
+  window.addEventListener("mousemove", function(e) {
+    if (!mmDragging) return;
+    e.preventDefault();
+    panFromMinimap(e);
+  });
+
+  window.addEventListener("mouseup", function(e) {
+    if (mmDragging) {
+      mmDragging = false;
+      e.stopPropagation();
+    }
+  });
+
+  // ── HUD ──
+  var hud = document.getElementById("map-hud");
+  var hudZoomEl = document.getElementById("hud-zoom");
+
+  function updateHud(node) {
+    if (!node || hiddenNodes.has(node.id)) {
+      hud.classList.add("empty");
+      hud.innerHTML = '<span class="hud-label">explore the map</span><span class="hud-zoom" id="hud-zoom">' + zoom.toFixed(1) + 'x</span>';
+      hudZoomEl = document.getElementById("hud-zoom");
+      return;
+    }
+    hud.classList.remove("empty");
+    var cat = node.category;
+    var color = COLORS[cat] || "#baa997";
+    var brk = BRACKETS[cat] || ["[", "]"];
+    var catLabel = CATEGORY_LABELS[cat] || cat;
+
+    // Get top neighbors by val
+    var nids = neighbors[node.id] || {};
+    var neighborNodes = [];
+    for (var nid in nids) {
+      if (!hiddenNodes.has(nid)) neighborNodes.push(nodeById[nid]);
+    }
+    neighborNodes.sort(function(a, b) { return (b.val || 0) - (a.val || 0); });
+    neighborNodes = neighborNodes.slice(0, 5);
+
+    var html = '<span class="hud-node" style="color:' + color + '">' +
+      escapeHtml(brk[0] + " " + node.label + " " + brk[1]) + '</span>' +
+      '<span class="hud-sep">\u2192</span>' +
+      '<span class="hud-cat" style="color:' + color + '">' + escapeHtml(catLabel) + '</span>';
+
+    if (neighborNodes.length > 0) {
+      html += '<span class="hud-sep">\u2502</span><span class="hud-label">linked:</span>';
+      html += '<span class="hud-neighbors">';
+      for (var i = 0; i < neighborNodes.length; i++) {
+        var nn = neighborNodes[i];
+        var nbrk = BRACKETS[nn.category] || ["[", "]"];
+        var ncolor = COLORS[nn.category] || "#baa997";
+        html += '<span class="hud-neighbor" style="color:' + ncolor + '">' +
+          escapeHtml(nbrk[0] + nn.label + nbrk[1]) + '</span>';
+      }
+      html += '</span>';
+    }
+    html += '<span class="hud-zoom" id="hud-zoom">' + zoom.toFixed(1) + 'x</span>';
+    hud.innerHTML = html;
+    hudZoomEl = document.getElementById("hud-zoom");
+  }
+
+  function updateHudZoom() {
+    if (hudZoomEl) hudZoomEl.textContent = zoom.toFixed(1) + "x";
+    var zlLabel = document.getElementById("zoom-level-label");
+    if (zlLabel) zlLabel.textContent = zoom.toFixed(1) + "x";
+  }
+
+  // ── Stacking panels ──
+  var panelOverlay = document.getElementById("panel-overlay");
+
+  function openPanel(nodeId) {
+    var p = previews && previews[nodeId];
+    var node = nodeById[nodeId];
+    if (!node) return;
+
+    // Don't open duplicate
+    for (var i = 0; i < stackPanels.length; i++) {
+      if (stackPanels[i].nodeId === nodeId) return;
+    }
+
+    // Mark previous panels as stacked
+    for (var i = 0; i < stackPanels.length; i++) {
+      stackPanels[i].el.classList.add("stacked");
+    }
+
+    // Max 2 panels
+    if (stackPanels.length >= 2) {
+      var oldest = stackPanels.shift();
+      oldest.el.remove();
+    }
+
+    var cat = node.category;
+    var color = COLORS[cat] || "#baa997";
+    var catLabel = CATEGORY_LABELS[cat] || cat;
+
+    var panel = document.createElement("div");
+    panel.className = "stack-panel";
+    panel.innerHTML =
+      '<div class="panel-header">' +
+        '<button class="panel-close" data-nid="' + nodeId + '">\u00D7</button>' +
+        '<div class="panel-cat" style="color:' + color + '">' + escapeHtml(catLabel) + '</div>' +
+        '<h3 class="panel-title">' + escapeHtml(p ? p.title : node.label) + '</h3>' +
+      '</div>' +
+      '<div class="panel-body">' + (p && p.rich ? formatRich(p.rich) : formatLead(p ? p.lead : "")) + '</div>' +
+      '<div class="panel-nav"><a href="' + (node.href || "#") + '">Open full page</a></div>';
+
+    panelOverlay.appendChild(panel);
+    // Trigger reflow then animate in
+    panel.offsetHeight;
+    panel.classList.add("visible");
+
+    // Close handler
+    panel.querySelector(".panel-close").addEventListener("click", function() {
+      closePanel(nodeId);
+    });
+
+    stackPanels.push({ nodeId: nodeId, el: panel });
+    repositionUI();
+  }
+
+  function repositionUI() {
+    var hasPanel = stackPanels.length > 0;
+    var legendEl = document.querySelector(".map-legend");
+    var minimapEl = document.querySelector(".map-minimap");
+    // Calculate total panel width so we can tuck legend/minimap just left of panels
+    var panelWidth = 0;
+    if (hasPanel) {
+      panelWidth = 380; // first panel
+      if (stackPanels.length > 1) panelWidth += (stackPanels.length - 1) * 340; // stacked panels overlap by 20px
+    }
+    var rightOffset = hasPanel ? (panelWidth + 18) + "px" : "18px";
+    if (legendEl) {
+      legendEl.style.right = rightOffset;
+      legendEl.style.left = "auto";
+    }
+    if (minimapEl) {
+      minimapEl.style.right = rightOffset;
+      minimapEl.style.left = "auto";
+    }
+  }
+
+  function closePanel(nodeId) {
+    for (var i = stackPanels.length - 1; i >= 0; i--) {
+      if (stackPanels[i].nodeId === nodeId) {
+        stackPanels[i].el.classList.remove("visible");
+        var el = stackPanels[i].el;
+        setTimeout(function() { el.remove(); }, 300);
+        stackPanels.splice(i, 1);
+        break;
+      }
+    }
+    // Unstack the last remaining panel
+    if (stackPanels.length > 0) {
+      stackPanels[stackPanels.length - 1].el.classList.remove("stacked");
+    }
+    repositionUI();
+  }
+
+  function closeAllPanels() {
+    for (var i = 0; i < stackPanels.length; i++) {
+      stackPanels[i].el.classList.remove("visible");
+      var el = stackPanels[i].el;
+      setTimeout(function() { el.remove(); }, 300);
+    }
+    stackPanels = [];
+    repositionUI();
+  }
+
+  // Close panels when clicking on canvas background
+  canvas.addEventListener("mousedown", function(e) {
+    // Will be handled in click if not drag
+  });
+
+  // ── Filter ──
+  function applyFilter() {
+    hiddenNodes.clear();
+    for (var i = 0; i < nodes.length; i++) {
+      if (!activeCategories.has(nodes[i].category)) hiddenNodes.add(nodes[i].id);
+    }
+    if (hoverId && hiddenNodes.has(hoverId)) { hoverId = null; hoverNode = null; hideTooltip(); }
+    if (selectedNodeId && hiddenNodes.has(selectedNodeId)) selectedNodeId = null;
+    if (searchHighlightId && hiddenNodes.has(searchHighlightId)) searchHighlightId = null;
+    scheduleRedraw();
+    updateStats();
+  }
+
+  function updateStats() {
+    var vn = nodes.filter(function(n) { return !hiddenNodes.has(n.id); });
+    var ve = edges.filter(function(e) { return !hiddenNodes.has(e.source) && !hiddenNodes.has(e.target); });
+    document.getElementById("map-stats").innerHTML =
+      '<strong>' + vn.length + '</strong> rooms &middot; <strong>' + ve.length + '</strong> connections';
+  }
+
+  // ── Search ──
+  var searchInput = document.getElementById("search-input");
+
+  function findNode(q) {
+    if (!q) return null;
+    q = q.toLowerCase().trim();
+    if (!q) return null;
+    for (var i = 0; i < nodes.length; i++) {
+      if (!hiddenNodes.has(nodes[i].id) && nodes[i].id === q) return nodes[i];
+    }
+    for (var i = 0; i < nodes.length; i++) {
+      if (!hiddenNodes.has(nodes[i].id) && nodes[i].label.toLowerCase().startsWith(q)) return nodes[i];
+    }
+    for (var i = 0; i < nodes.length; i++) {
+      if (!hiddenNodes.has(nodes[i].id) && nodes[i].label.toLowerCase().indexOf(q) !== -1) return nodes[i];
+    }
+    if (previews) {
+      for (var i = 0; i < nodes.length; i++) {
+        var p = previews[nodes[i].id];
+        if (p && !hiddenNodes.has(nodes[i].id) && p.title && p.title.toLowerCase().indexOf(q) !== -1) return nodes[i];
+      }
+    }
+    return null;
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", function() {
+      var q = searchInput.value;
+      if (!q || !q.trim()) { searchHighlightId = null; scheduleRedraw(); return; }
+      var match = findNode(q);
+      if (match) { searchHighlightId = match.id; updateHud(match); panToNode(match); }
+      else { searchHighlightId = null; scheduleRedraw(); }
+    });
+    searchInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && searchHighlightId) {
+        var node = nodeById[searchHighlightId];
+        if (node && node.href) { window.location = node.href; return; }
+      }
+      if (e.key === "Escape") {
+        searchHighlightId = null;
+        searchInput.value = "";
+        searchInput.blur();
+        scheduleRedraw();
+      }
+    });
+  }
+
+  // ── Mouse events ──
+  // Hit-test the live editorial pull quote in screen coordinates. Returns true if
+  // the point lies inside the floating quote block (including its drag hit-padding).
+  function quoteAt(sx, sy) {
+    if (editorialFade < 0.5 || !editorialNodeId) return false;
+    var lay = getEditorialLayout(editorialNodeId);
+    if (!lay || !lay.draggableQuote) return false;
+    if (typeof lay._quoteScreenX !== "number") return false;
+    var pad = 8;
+    return sx >= lay._quoteScreenX - pad &&
+           sx <= lay._quoteScreenX + lay._quoteScreenW + pad &&
+           sy >= lay._quoteScreenY - pad &&
+           sy <= lay._quoteScreenY + lay._quoteScreenH + pad;
+  }
+
+  // Hit-test wikilink words inside the current editorial card. Link hitboxes are
+  // populated every frame by drawStyledJustifiedLine, so they match the visible
+  // text exactly — including across justified lines and exclusion-zone fragments.
+  function linkAt(sx, sy) {
+    if (editorialFade < 0.5 || !editorialNodeId) return null;
+    var lay = getEditorialLayout(editorialNodeId);
+    if (!lay || !lay._linkHitboxes) return null;
+    for (var i = 0; i < lay._linkHitboxes.length; i++) {
+      var h = lay._linkHitboxes[i];
+      if (sx >= h.x && sx <= h.x + h.w && sy >= h.y && sy <= h.y + h.h) {
+        return h;
+      }
+    }
+    return null;
+  }
+
+  canvas.addEventListener("mousedown", function(e) {
+    // Check if mousedown lands on the draggable pull quote BEFORE starting pan.
+    var rect0 = canvas.getBoundingClientRect();
+    var sx0 = e.clientX - rect0.left, sy0 = e.clientY - rect0.top;
+    if (quoteAt(sx0, sy0)) {
+      var lay = getEditorialLayout(editorialNodeId);
+      if (lay) {
+        editorialDraggingQuote = true;
+        editorialDragHoverQuote = true;
+        // Offset from quote top-left to click point (screen-space)
+        editorialDragOffsetX = sx0 - lay._quoteScreenX;
+        editorialDragOffsetY = sy0 - lay._quoteScreenY;
+        canvas.style.cursor = "grabbing";
+        e.preventDefault();
+        return;
+      }
+    }
+    dragging = true; didDrag = false;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    panStartX = panX; panStartY = panY;
+  });
+
+  window.addEventListener("mousemove", function(e) {
+    if (mmDragging) return;
+    // ── Draggable pull-quote — highest priority ──
+    if (editorialDraggingQuote && editorialNodeId) {
+      var lay = getEditorialLayout(editorialNodeId);
+      if (!lay || !lay.draggableQuote) {
+        editorialDraggingQuote = false;
+      } else {
+        var rectQ = canvas.getBoundingClientRect();
+        var sxQ = e.clientX - rectQ.left, syQ = e.clientY - rectQ.top;
+        // Convert screen point to body-local (column-relative) coords by removing
+        // the same offsets drawEditorial uses for startX / bodyStartY. Since card
+        // position is animated via easeAlpha, use the cached layout values directly
+        // (drag only runs at alpha === 1 after the fade completes).
+        var startX = lay.cardX + lay.padX;
+        var bodyStartY = lay.cardY + lay.padY_top + lay.headerH;
+        var newLocalX = (sxQ - startX) - editorialDragOffsetX;
+        var newLocalY = (syQ - bodyStartY + editorialScrollY) - editorialDragOffsetY;
+        // Clamp horizontally: in two-column mode the quote can range over the full
+        // inner width (straddle the gap); in single-column mode it stays inside the
+        // single column.
+        var horizontalRange = lay.useColumns ? lay.innerW : lay.colW;
+        var maxX = horizontalRange - lay.pullBlockW;
+        if (maxX < 0) maxX = 0;
+        if (newLocalX < 0) newLocalX = 0;
+        if (newLocalX > maxX) newLocalX = maxX;
+        // Clamp inside the body (leave a little breathing room at top/bottom)
+        var minY = (lay.dropCapLetter ? lay.dropCapHeight + 6 : 8);
+        if (newLocalY < minY) newLocalY = minY;
+        // Bottom clamp uses current totalBodyH (which shrinks when the quote pushes text)
+        var maxY = Math.max(minY, (lay.totalBodyH || 0) - lay.pullBlockH - 8);
+        if (newLocalY > maxY) newLocalY = maxY;
+        editorialQuoteX = Math.round(newLocalX);
+        editorialQuoteY = Math.round(newLocalY);
+        lay._liveQuoteX = editorialQuoteX;
+        lay._liveQuoteY = editorialQuoteY;
+        // Re-layout body with the new exclusion rect. Cheap: only layoutNextLine runs.
+        relayoutEditorialBody(lay);
+        canvas.style.cursor = "grabbing";
+        scheduleRedraw();
+      }
+      return;
+    }
+    if (dragging) {
+      var dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag = true;
+      panX = panStartX + dx; panY = panStartY + dy;
+      scheduleRedraw();
+      return;
+    }
+    var rect = canvas.getBoundingClientRect();
+    var sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+
+    // Hover the draggable pull quote → grab cursor + subtle border
+    if (quoteAt(sx, sy)) {
+      if (!editorialDragHoverQuote) {
+        editorialDragHoverQuote = true;
+        scheduleRedraw();
+      }
+      canvas.style.cursor = "grab";
+      if (hoverId) { hoverId = null; hoverNode = null; hideTooltip(); updateHud(null); scheduleRedraw(); }
+      return;
+    } else if (editorialDragHoverQuote) {
+      editorialDragHoverQuote = false;
+      scheduleRedraw();
+    }
+
+    // Block node hover detection when over the editorial card — but allow
+    // wikilinks and pills (rendered below card) to remain interactive.
+    if (editorialFade > 0.5 && editorialNodeId) {
+      var elayoutHover = getEditorialLayout(editorialNodeId);
+      if (elayoutHover) {
+        if (sx >= elayoutHover.cardX && sx <= elayoutHover.cardX + elayoutHover.cardW &&
+            sy >= elayoutHover.cardY && sy <= elayoutHover.cardY + elayoutHover.cardH) {
+          // Inside card — check wikilinks first, then pills, then block the rest.
+          var linkHitInside = linkAt(sx, sy);
+          if (linkHitInside) {
+            canvas.style.cursor = "pointer";
+            if (hoverId) { hoverId = null; hoverNode = null; hideTooltip(); updateHud(null); scheduleRedraw(); }
+            return;
+          }
+          var pillHitCard = pillAt(sx, sy);
+          canvas.style.cursor = pillHitCard ? "pointer" : "default";
+          if (hoverId) { hoverId = null; hoverNode = null; hideTooltip(); updateHud(null); scheduleRedraw(); }
+          return;
+        }
+      }
+    }
+
+    // Check for pill hover in editorial mode
+    var pillHit = pillAt(sx, sy);
+    if (pillHit) {
+      canvas.style.cursor = "pointer";
+      return;
+    }
+
+    var hit = nodeAt(sx, sy);
+    var newId = hit ? hit.id : null;
+    if (newId !== hoverId) {
+      hoverId = newId; hoverNode = hit;
+      canvas.style.cursor = hit ? "pointer" : "grab";
+      if (hit) { showTooltip(hit, e.clientX, e.clientY); updateHud(hit); }
+      else { hideTooltip(); updateHud(null); }
+      scheduleRedraw();
+    } else if (hit) {
+      showTooltip(hit, e.clientX, e.clientY);
+    }
+  });
+
+  window.addEventListener("mouseup", function(e) {
+    dragging = false;
+    if (editorialDraggingQuote) {
+      editorialDraggingQuote = false;
+      // Keep hover state in sync for the next mousemove
+      var rectU = canvas.getBoundingClientRect();
+      var sxU = e.clientX - rectU.left, syU = e.clientY - rectU.top;
+      editorialDragHoverQuote = quoteAt(sxU, syU);
+      canvas.style.cursor = editorialDragHoverQuote ? "grab" : "default";
+      scheduleRedraw();
+    }
+  });
+
+  canvas.addEventListener("click", function(e) {
+    if (didDrag) return;
+    var rect = canvas.getBoundingClientRect();
+    var sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+
+    // Swallow clicks on (or just-dragged) the pull quote so they don't exit editorial.
+    if (quoteAt(sx, sy)) return;
+
+    // Wikilink click → navigate to that page's HTML. Must come before the pill
+    // check because pill hitboxes are rendered outside the card but wikilinks
+    // live inside the card body.
+    var linkHit = linkAt(sx, sy);
+    if (linkHit && linkHit.slug) {
+      window.location = linkHit.slug + ".html";
+      return;
+    }
+
+    // Check pill clicks first (editorial mode navigation)
+    var pill = pillAt(sx, sy);
+    if (pill) {
+      selectedNodeId = pill.id;
+      // Clear pill hitboxes
+      for (var ni = 0; ni < nodes.length; ni++) nodes[ni]._hasPill = false;
+      editorialLayoutCache = {};
+      editorialFade = 0;
+      editorialFadeTarget = 0;
+      editorialScrollY = 0;
+      closeAllPanels();
+      zoomToNode(pill, 5.0);
+      updateHud(pill);
+      scheduleRedraw();
+      return;
+    }
+
+    var hit = nodeAt(sx, sy);
+    if (hit) {
+      selectedNodeId = hit.id;
+      updateHud(hit);
+      // In editorial zoom range, don't open side panel — editorial surface IS the panel
+      if (zoom < ZOOM_EDITORIAL_THRESHOLD) {
+        openPanel(hit.id);
+      }
+      scheduleRedraw();
+    } else {
+      // Click on empty space or dark overlay: close all panels, exit editorial
+      if (stackPanels.length > 0) closeAllPanels();
+      if (editorialFade > 0.01) {
+        // Smooth exit from editorial mode
+        editorialFadeTarget = 0;
+        forceEditorial = false;
+        editorialScrollY = 0;
+        editorialFadeStart = editorialFade;
+        editorialFadeStartTime = performance.now();
+        for (var ni = 0; ni < nodes.length; ni++) nodes[ni]._hasPill = false;
+        selectedNodeId = null;
+        editorialNodeId = null;
+        updateHud(null);
+        scheduleRedraw();
+        return;
+      }
+      selectedNodeId = null;
+      editorialNodeId = null;
+      editorialFadeTarget = 0;
+      forceEditorial = false;
+      editorialScrollY = 0;
+      editorialFadeStart = editorialFade;
+      editorialFadeStartTime = performance.now();
+      for (var ni = 0; ni < nodes.length; ni++) nodes[ni]._hasPill = false;
+      updateHud(null);
+      scheduleRedraw();
+    }
+  });
+
+  canvas.addEventListener("dblclick", function(e) {
+    e.preventDefault();
+    var rect = canvas.getBoundingClientRect();
+    var sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    var hit = nodeAt(sx, sy);
+    if (hit) {
+      // Double-click enters editorial mode instantly — no zoom animation.
+      // The pretext.js typography card fades in without the jarring zoom.
+      selectedNodeId = hit.id;
+      closeAllPanels();
+      editorialLayoutCache = {};
+      editorialScrollY = 0;
+      forceEditorial = true;
+      updateHud(hit);
+      updateEditorialState();
+      scheduleRedraw();
+    }
+  });
+
+  canvas.addEventListener("mouseleave", function() {
+    if (hoverId) { hoverId = null; hoverNode = null; hideTooltip(); scheduleRedraw(); }
+  });
+
+  canvas.addEventListener("wheel", function(e) {
+    e.preventDefault();
+
+    // In editorial mode: wheel scrolls the card content instead of zooming the map
+    if (editorialFade > 0.5 && editorialNodeId) {
+      var layout = getEditorialLayout(editorialNodeId);
+      if (layout) {
+        var maxScroll = Math.max(0, (layout.contentH || layout.cardH) - layout.cardH);
+        if (maxScroll > 0) {
+          editorialScrollY = Math.max(0, Math.min(maxScroll, editorialScrollY + e.deltaY));
+          scheduleRedraw();
+          return;
+        }
+      }
+    }
+
+    var rect = canvas.getBoundingClientRect();
+    var mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    var factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    var nz = Math.max(0.08, Math.min(8, zoom * factor));
+    var npx = mx - (mx - panX) * (nz / zoom), npy = my - (my - panY) * (nz / zoom);
+    animateTo(nz, npx, npy, 80);
+
+    // Smoothly exit editorial mode when zooming out past threshold
+    if (nz < ZOOM_EDITORIAL_THRESHOLD && editorialFade > 0) {
+      editorialFadeTarget = 0;
+      forceEditorial = false;
+      editorialScrollY = 0;
+      editorialFadeStart = editorialFade;
+      editorialFadeStartTime = performance.now();
+      for (var ni = 0; ni < nodes.length; ni++) nodes[ni]._hasPill = false;
+      scheduleRedraw();
+    }
+  }, { passive: false });
+
+  // ── Keyboard ──
+  document.addEventListener("keydown", function(e) {
+    if (document.activeElement === searchInput) return;
+    if (e.key === "/" || (e.key === "f" && (e.metaKey || e.ctrlKey))) {
+      e.preventDefault(); searchInput.focus(); return;
+    }
+    if (e.key === "Escape") {
+      selectedNodeId = null; searchHighlightId = null;
+      editorialNodeId = null;
+      editorialFadeTarget = 0;
+      forceEditorial = false;
+      editorialScrollY = 0;
+      editorialFadeStart = editorialFade;
+      editorialFadeStartTime = performance.now();
+      for (var ni = 0; ni < nodes.length; ni++) nodes[ni]._hasPill = false;
+      if (searchInput) searchInput.value = "";
+      closeAllPanels();
+      updateHud(null);
+      scheduleRedraw();
+      return;
+    }
+    if (e.key === "Enter" && selectedNodeId) {
+      var node = nodeById[selectedNodeId];
+      if (node && node.href) window.location = node.href;
+      return;
+    }
+
+    // ── Editorial scroll keys ──
+    if ((forceEditorial || editorialFade > 0.5) && editorialNodeId) {
+      var scrollKey = null;
+      var scrollDelta = 0;
+      if (e.key === "ArrowDown") { scrollDelta = 60; scrollKey = true; }
+      else if (e.key === "ArrowUp") { scrollDelta = -60; scrollKey = true; }
+      else if (e.key === "PageDown" || e.key === " " || e.key === "Space") { scrollDelta = H * 0.8; scrollKey = true; }
+      else if (e.key === "PageUp") { scrollDelta = -H * 0.8; scrollKey = true; }
+      else if (e.key === "Home") { editorialScrollY = 0; e.preventDefault(); scheduleRedraw(); return; }
+      else if (e.key === "End") {
+        var elayout = getEditorialLayout(editorialNodeId);
+        if (elayout) editorialScrollY = Math.max(0, (elayout.contentH || elayout.cardH) - elayout.cardH);
+        e.preventDefault(); scheduleRedraw(); return;
+      }
+      if (scrollKey) {
+        e.preventDefault();
+        var elayout2 = getEditorialLayout(editorialNodeId);
+        if (elayout2) {
+          var maxScroll = Math.max(0, (elayout2.contentH || elayout2.cardH) - elayout2.cardH);
+          editorialScrollY = Math.max(0, Math.min(maxScroll, editorialScrollY + scrollDelta));
+          scheduleRedraw();
+        }
+        return;
+      }
+    }
+
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.key) !== -1) {
+      e.preventDefault();
+      if (!selectedNodeId) {
+        for (var i = 0; i < nodes.length; i++) {
+          if (!hiddenNodes.has(nodes[i].id)) {
+            selectedNodeId = nodes[i].id; panToNode(nodes[i]); updateHud(nodes[i]); scheduleRedraw(); return;
+          }
+        }
+        return;
+      }
+      var cur = nodeById[selectedNodeId];
+      if (!cur) return;
+      var nids = neighbors[selectedNodeId];
+      if (!nids) return;
+      var best = null, bestD = Infinity;
+      // First pass: direction + distance
+      for (var nid in nids) {
+        if (hiddenNodes.has(nid)) continue;
+        var n = nodeById[nid]; if (!n) continue;
+        var dx = n._wx - cur._wx, dy = n._wy - cur._wy;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        var ok = false;
+        switch (e.key) {
+          case "ArrowRight": ok = dx > 0 && Math.abs(dx) > Math.abs(dy) * 0.5; break;
+          case "ArrowLeft":  ok = dx < 0 && Math.abs(dx) > Math.abs(dy) * 0.5; break;
+          case "ArrowDown":  ok = dy > 0 && Math.abs(dy) > Math.abs(dx) * 0.5; break;
+          case "ArrowUp":    ok = dy < 0 && Math.abs(dy) > Math.abs(dx) * 0.5; break;
+        }
+        if (ok && d < bestD) { best = n; bestD = d; }
+      }
+      // Fallback: less strict
+      if (!best) {
+        for (var nid in nids) {
+          if (hiddenNodes.has(nid)) continue;
+          var n = nodeById[nid]; if (!n) continue;
+          var dx = n._wx - cur._wx, dy = n._wy - cur._wy;
+          var d = Math.sqrt(dx * dx + dy * dy);
+          var ok = false;
+          switch (e.key) {
+            case "ArrowRight": ok = dx > 0; break;
+            case "ArrowLeft":  ok = dx < 0; break;
+            case "ArrowDown":  ok = dy > 0; break;
+            case "ArrowUp":    ok = dy < 0; break;
+          }
+          if (ok && d < bestD) { best = n; bestD = d; }
+        }
+      }
+      if (best) {
+        selectedNodeId = best.id;
+        panToNode(best);
+        updateHud(best);
+        scheduleRedraw();
+      }
+    }
+  });
+
+  // ── Legend ──
+  function buildLegend(stats) {
+    var legendEl = document.getElementById("legend-items");
+    var resetBtn = document.getElementById("legend-reset");
+    var order = ["question", "concept", "entity", "source", "special"];
+    var activeCats = order.filter(function(c) { return stats[c] > 0; });
+
+    for (var i = 0; i < order.length; i++) {
+      var cat = order[i], count = stats[cat] || 0;
+      if (!count) continue;
+      (function(cat, count) {
+        var li = document.createElement("li");
+        var brk = BRACKETS[cat] || ["[", "]"];
+        li.innerHTML =
+          '<span class="dot" style="background:' + COLORS[cat] + '"></span>' +
+          '<span class="bracket">' + escapeHtml(brk[0] + " " + brk[1]) + '</span>' +
+          '<span>' + (CATEGORY_LABELS[cat] || cat) + '</span>' +
+          '<span class="count">' + count + '</span>';
+        li.addEventListener("click", function() {
+          if (activeCategories.has(cat)) activeCategories.delete(cat);
+          else activeCategories.add(cat);
+          li.classList.toggle("dimmed", !activeCategories.has(cat));
+          resetBtn.style.display = activeCategories.size === activeCats.length ? "none" : "block";
+          applyFilter();
+        });
+        legendEl.appendChild(li);
+      })(cat, count);
+    }
+    resetBtn.addEventListener("click", function() {
+      activeCategories = new Set(Object.keys(COLORS));
+      var items = legendEl.querySelectorAll("li");
+      for (var j = 0; j < items.length; j++) items[j].classList.remove("dimmed");
+      resetBtn.style.display = "none";
+      applyFilter();
+    });
+  }
+
+  // ── Zoom controls ──
+  var zoomLevelLabel = document.getElementById("zoom-level-label");
+
+  function updateZoomLabel() {
+    if (zoomLevelLabel) zoomLevelLabel.textContent = zoom.toFixed(1) + "x";
+  }
+
+  document.getElementById("zoom-in-btn").addEventListener("click", function(e) {
+    e.stopPropagation();
+    var nz = Math.min(8, zoom * 1.5);
+    animateTo(nz, W / 2 - ((W / 2 - panX) / zoom) * nz, H / 2 - ((H / 2 - panY) / zoom) * nz, 300);
+  });
+
+  document.getElementById("zoom-out-btn").addEventListener("click", function(e) {
+    e.stopPropagation();
+    var nz = Math.max(0.08, zoom / 1.5);
+    animateTo(nz, W / 2 - ((W / 2 - panX) / zoom) * nz, H / 2 - ((H / 2 - panY) / zoom) * nz, 300);
+    // Exit editorial if zooming below threshold
+    if (nz < ZOOM_EDITORIAL_THRESHOLD && editorialFade > 0) {
+      editorialFadeTarget = 0;
+      forceEditorial = false;
+      editorialScrollY = 0;
+      editorialFadeStart = editorialFade;
+      editorialFadeStartTime = performance.now();
+      for (var ni = 0; ni < nodes.length; ni++) nodes[ni]._hasPill = false;
+    }
+  });
+
+  document.getElementById("zoom-fit-btn").addEventListener("click", function(e) {
+    e.stopPropagation();
+    // Exit editorial mode
+    if (editorialFade > 0) {
+      editorialFadeTarget = 0;
+      forceEditorial = false;
+      editorialScrollY = 0;
+      editorialFadeStart = editorialFade;
+      editorialFadeStartTime = performance.now();
+      editorialNodeId = null;
+      for (var ni = 0; ni < nodes.length; ni++) nodes[ni]._hasPill = false;
+    }
+    selectedNodeId = null;
+    // Recalculate center view as animation target
+    if (!nodes.length) return;
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (hiddenNodes.has(n.id)) continue;
+      minX = Math.min(minX, n._wx - n._boxW / 2);
+      maxX = Math.max(maxX, n._wx + n._boxW / 2);
+      minY = Math.min(minY, n._wy - n._boxH / 2);
+      maxY = Math.max(maxY, n._wy + n._boxH / 2);
+    }
+    if (minX === Infinity) return;
+    var cw = maxX - minX, ch = maxY - minY, pad = 80;
+    var fitZoom = Math.min((W - pad * 2) / cw, (H - pad * 2) / ch, 1.5);
+    fitZoom = Math.max(fitZoom, 0.15);
+    var fitPanX = W / 2 - (minX + cw / 2) * fitZoom;
+    var fitPanY = H / 2 - (minY + ch / 2) * fitZoom;
+    animateTo(fitZoom, fitPanX, fitPanY, 400);
+    updateHud(null);
+    scheduleRedraw();
+  });
+
+  document.getElementById("zoom-read-btn").addEventListener("click", function(e) {
+    e.stopPropagation();
+    var target = null;
+    if (selectedNodeId) {
+      target = nodeById[selectedNodeId];
+    } else {
+      // Find most-connected node
+      var bestCount = 0;
+      for (var i = 0; i < nodes.length; i++) {
+        if (hiddenNodes.has(nodes[i].id)) continue;
+        var nids = neighbors[nodes[i].id] || {};
+        var count = Object.keys(nids).length;
+        if (count > bestCount) { bestCount = count; target = nodes[i]; }
+      }
+    }
+    if (target) {
+      selectedNodeId = target.id;
+      editorialLayoutCache = {};
+      editorialScrollY = 0;
+      closeAllPanels();
+      zoomToNode(target, 5.0);
+      updateHud(target);
+      scheduleRedraw();
+    }
+  });
+
+  // ── Test hook (Playwright only) — deterministic entry into editorial mode ──
+  window.__wikiwiseTest__ = {
+    enterEditorial: function (nodeId) {
+      if (!nodeById[nodeId]) return false;
+      selectedNodeId = nodeId;
+      closeAllPanels();
+      editorialLayoutCache = {};
+      editorialQuoteInitialized = false;
+      editorialScrollY = 0;
+      forceEditorial = true;
+      editorialFade = 1;
+      editorialFadeTarget = 1;
+      editorialNodeId = nodeId;
+      updateHud(nodeById[nodeId]);
+      updateEditorialState();
+      scheduleRedraw();
+      return true;
+    },
+    getQuoteScreenRect: function () {
+      if (!editorialNodeId) return null;
+      var lay = getEditorialLayout(editorialNodeId);
+      if (!lay || typeof lay._quoteScreenX !== "number") return null;
+      return {
+        x: lay._quoteScreenX,
+        y: lay._quoteScreenY,
+        w: lay._quoteScreenW,
+        h: lay._quoteScreenH,
+        localX: editorialQuoteX,
+        localY: editorialQuoteY,
+        initialX: lay.initialQuoteX,
+        initialY: lay.initialQuoteY,
+      };
+    },
+    getLayoutSummary: function () {
+      if (!editorialNodeId) return null;
+      var lay = getEditorialLayout(editorialNodeId);
+      if (!lay) return null;
+      var col1Samples = [];
+      var col2Samples = [];
+      function collect(block, out) {
+        if (block.isHeader) return;
+        for (var li = 0; li < block.lines.length; li++) {
+          var ln = block.lines[li];
+          out.push({ y: ln.y, x: ln.x, w: ln.lineW, side: ln.side, text: (ln.text || "").slice(0, 30) });
+        }
+      }
+      if (lay.useColumns && lay.col1Blocks && lay.col2Blocks) {
+        for (var bi = 0; bi < lay.col1Blocks.length; bi++) collect(lay.col1Blocks[bi], col1Samples);
+        for (var bi2 = 0; bi2 < lay.col2Blocks.length; bi2++) collect(lay.col2Blocks[bi2], col2Samples);
+      } else if (lay.bodyBlocks) {
+        for (var bi3 = 0; bi3 < lay.bodyBlocks.length; bi3++) collect(lay.bodyBlocks[bi3], col1Samples);
+      }
+      return {
+        useColumns: lay.useColumns,
+        draggableQuote: lay.draggableQuote,
+        cardX: lay.cardX,
+        cardY: lay.cardY,
+        colW: lay.colW,
+        innerW: lay.innerW,
+        colGap: lay.colGap,
+        totalBodyH: lay.totalBodyH,
+        pullBlockW: lay.pullBlockW,
+        pullBlockH: lay.pullBlockH,
+        targetHalfForTwoCol: lay.targetHalfForTwoCol,
+        lineCount: col1Samples.length + col2Samples.length,
+        col1LineCount: col1Samples.length,
+        col2LineCount: col2Samples.length,
+        firstLines: col1Samples.slice(0, 30),
+        col1Lines: col1Samples,
+        col2Lines: col2Samples,
+      };
+    },
+    getPullQuote: function () {
+      if (!editorialNodeId) return null;
+      var lay = getEditorialLayout(editorialNodeId);
+      if (!lay) return null;
+      var lines = lay.pullQuoteLines || [];
+      var text = lines.map(function (l) { return l.text || ""; }).join(" ").trim();
+      return {
+        text: text,
+        lineCount: lines.length,
+        useColumns: lay.useColumns || false,
+        initialQuoteX: lay.initialQuoteX,
+        initialQuoteY: lay.initialQuoteY,
+        pullBlockW: lay.pullBlockW,
+        pullBlockH: lay.pullBlockH,
+        colW: lay.colW,
+        innerW: lay.innerW,
+        lineWidths: lines.map(function (l) { return l.width || 0; }),
+        lineCenterDx: lines.map(function (l) { return l._centerDx || 0; }),
+        lineTexts: lines.map(function (l) { return l.text || ""; }),
+      };
+    },
+    getLinkHitboxes: function () {
+      if (!editorialNodeId) return null;
+      var lay = getEditorialLayout(editorialNodeId);
+      if (!lay) return null;
+      return (lay._linkHitboxes || []).map(function (h) {
+        return { x: h.x, y: h.y, w: h.w, h: h.h, slug: h.slug, display: h.display };
+      });
+    },
+    getBlocks: function () {
+      if (!editorialNodeId) return null;
+      var lay = getEditorialLayout(editorialNodeId);
+      if (!lay) return null;
+      function pack(blocks) {
+        return (blocks || []).map(function (b) {
+          return {
+            isHeader: !!b.isHeader,
+            isDropCapPara: !!b.isDropCapPara,
+            startY: b.startY,
+            endY: b.endY,
+            spaceAbove: b.spaceAbove,
+            spaceBelow: b.spaceBelow,
+            firstLineText: (b.lines && b.lines[0] && b.lines[0].text || "").slice(0, 40),
+          };
+        });
+      }
+      return {
+        useColumns: lay.useColumns,
+        bodyBlocks: pack(lay.bodyBlocks),
+        col1Blocks: pack(lay.col1Blocks),
+        col2Blocks: pack(lay.col2Blocks),
+      };
+    },
+    listNodeIds: function () {
+      if (typeof nodes === "undefined" || !nodes) return [];
+      return nodes.map(function (n) { return n.id; });
+    },
+    openPanelForTest: function (nodeId) {
+      // Directly open the sidebar panel for a node, bypassing the
+      // canvas-click path. Used by headless audits that can't find
+      // the node's screen position by pixel scan. Fires the same
+      // render path (openPanel → formatRich / formatLead).
+      if (!nodeById[nodeId]) return false;
+      selectedNodeId = nodeId;
+      updateHud(nodeById[nodeId]);
+      openPanel(nodeId);
+      scheduleRedraw();
+      return true;
+    },
+    closeAllPanelsForTest: function () {
+      closeAllPanels();
+      scheduleRedraw();
+      return true;
+    },
+  };
+
+  // ── Boot ──
+  Promise.resolve().then(function() {
+    // Prefer inlined data (works on file://); fall back to fetch (for live dev server)
+    if (window.__MAP_DATA__) {
+      return [window.__MAP_DATA__, window.__PREVIEWS_DATA__ || {}, window.__GRAPH_DATA__ || { links: [] }];
+    }
+    return Promise.all([
+      fetch("map.json").then(function(r) { return r.json(); }),
+      fetch("previews.json").then(function(r) { return r.json(); }).catch(function() { return {}; }),
+      fetch("graph.json").then(function(r) { return r.json(); }).catch(function() { return { links: [] }; }),
+    ]);
+  }).then(function(results) {
+    var mapData = results[0];
+    previews = results[1];
+    var graphData = results[2];
+    nodes = mapData.nodes;
+    edges = mapData.edges;
+    computeEdgeWeights(graphData.links);
+
+    for (var i = 0; i < nodes.length; i++) {
+      nodeById[nodes[i].id] = nodes[i];
+      neighbors[nodes[i].id] = {};
+    }
+    for (var i = 0; i < edges.length; i++) {
+      var e = edges[i];
+      if (neighbors[e.source]) neighbors[e.source][e.target] = true;
+      if (neighbors[e.target]) neighbors[e.target][e.source] = true;
+    }
+
+    buildLegend(mapData.stats);
+    updateStats();
+    resize();
+    layoutNodes();
+    centerView();
+    setupMinimap();
+    scheduleRedraw();
+
+    window.addEventListener("resize", function() {
+      resize(); editorialLayoutCache = {}; layoutNodes(); scheduleRedraw(); setupMinimap();
+    });
+  }).catch(function(err) {
+    var isFile = window.location.protocol === 'file:';
+    var canvas = document.getElementById("map-canvas");
+    var rect = canvas.parentElement.getBoundingClientRect();
+    var W = rect.width, H = rect.height;
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = "#0a1214";
+    ctx.fillRect(0, 0, W, H);
+    ctx.font = "600 18px 'JetBrains Mono', monospace";
+    ctx.fillStyle = "#C4813D";
+    ctx.textAlign = "center";
+    ctx.fillText(isFile ? "Cannot load map data from file:// protocol" : "Failed to load map data", W/2, H/2 - 20);
+    ctx.font = "14px 'JetBrains Mono', monospace";
+    ctx.fillStyle = "rgba(250, 240, 230, 0.5)";
+    ctx.fillText(isFile ? "Run: cd site && python3 -m http.server 8799 --directory out" : err.message || "Check the console for details", W/2, H/2 + 10);
+    ctx.fillText(isFile ? "Then open http://localhost:8799/map.html" : "", W/2, H/2 + 35);
+  });
+})();
+</script>
+</body>
+</html>

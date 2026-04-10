@@ -1,0 +1,84 @@
+---
+name: import-readwise
+description: Import highlights and documents from Readwise into the wiki using the Readwise CLI (not MCP). Searches and browses interactively, then delegates to fetch-readwise-document and fetch-readwise-highlights for streaming large content to disk.
+allowed-tools: Bash(*) Read Write Edit Glob Grep
+---
+
+# Import from Readwise
+
+Pull the user's reading history and highlights from Readwise, then compile them into wiki pages.
+
+**Use the `readwise` CLI tool for all Readwise access.** Do not use MCP tools, Readwise APIs directly, or any other method — the CLI handles authentication, pagination, and rate limiting. All commands run via Bash.
+
+Use the Readwise CLI freely to search, browse, and explore the user's library. When it's time to actually pull large content into `raw/`, delegate to:
+
+- **`fetch-readwise-document`** — streams a full Reader document to disk without loading the body into context.
+- **`fetch-readwise-highlights`** — vector-searches highlights, groups by parent doc, and writes highlight collections to disk.
+
+## Step 0: Ensure the Readwise CLI is installed and authenticated
+
+Run these checks in order. Stop and fix each issue before continuing.
+
+1. **Check if the CLI exists:** `which readwise`
+2. **If not installed**, check if Node is available: `which node`
+   - **If Node exists:** run `npm install -g @readwise/cli`
+   - **If Node is missing:** install it directly:
+     ```
+     curl -fsSL https://nodejs.org/dist/v22.15.0/node-v22.15.0-darwin-arm64.tar.xz | tar -xJ -C /usr/local/lib
+     ln -sf /usr/local/lib/node-v22.15.0-darwin-arm64/bin/node /usr/local/bin/node
+     ln -sf /usr/local/lib/node-v22.15.0-darwin-arm64/bin/npm /usr/local/bin/npm
+     ln -sf /usr/local/lib/node-v22.15.0-darwin-arm64/bin/npx /usr/local/bin/npx
+     ```
+     Then run `npm install -g @readwise/cli`
+3. **Check if authenticated:** `readwise reader-list-documents --limit 1`
+4. **If not authenticated:** run `readwise login` (opens the user's browser for OAuth — wait for it to complete).
+
+Do not proceed until the CLI is installed and authenticated.
+
+## Step 1: Ask the user what to import
+
+Suggest importing by topic first — it's the most useful starting point:
+- **By topic** — search for documents and highlights related to a subject (recommended)
+- Import specific documents (by URL, title, or search)
+- Filter by date range or source type (books, articles, podcasts, tweets)
+- Mine their highlights for material relevant to the wiki
+
+## Step 2: Search and browse
+
+Use the Readwise CLI to explore the user's library interactively:
+
+```bash
+# Search for documents by topic
+readwise reader-search-documents --query "<topic>" --limit 20 --json
+
+# List recent documents
+readwise reader-list-documents --limit 20 --json
+
+# Search highlights by topic
+readwise readwise-search-highlights --vector-search-term "<topic>" --limit 30 --json
+```
+
+Show results to the user and let them pick what to import. This is the interactive phase — it's fine to have search results in context here since they're just metadata (titles, authors, snippets).
+
+**Note:** The CLI `--json` flag outputs raw JSON arrays, not objects with a `results` key. Pipe through `jq` carefully — e.g. `jq '.[].title'`, not `jq '.results[].title'`.
+
+## Step 3: Fetch into raw/
+
+**Import in small batches.** Fetch and fully ingest 3-5 sources first so the user can see the wiki taking shape before importing more. A wiki with a few well-connected pages is more useful than a queue of unprocessed raws. After the first batch is ingested and the user can browse it, ask if they want to continue with more.
+
+Once the user has picked what to import, delegate to the appropriate skill:
+
+- For **documents**: invoke `fetch-readwise-document` with the selected doc IDs. It handles metadata, streaming the body to disk, and verification.
+- For **highlights**: invoke `fetch-readwise-highlights` with the agreed-upon search queries. It handles vector search, deduplication, grouping, and writing highlight files.
+
+Both skills chain into `ingest` automatically to create wiki pages from the raws.
+
+## Step 4: Update wiki infrastructure
+
+After ingest completes:
+
+1. Verify `wiki/index.md` includes all new pages.
+2. Verify `wiki/home.md` reflects what was imported (if significant).
+3. Verify `wiki/log.md` has a timestamped entry.
+
+Report what was imported and what pages were created.

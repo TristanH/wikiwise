@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+*.o
+*.d
+*.swiftdeps
+*.swiftdeps~
+DerivedData/
+xcuserdata/
