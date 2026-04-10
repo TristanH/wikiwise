@@ -2,6 +2,7 @@
 set -euo pipefail
 
 VERSION="${1:-0.1.0}"
+SIGNING_IDENTITY="Developer ID Application: Readwise, Inc (QV36BMA4LN)"
 APP="Wikiwise.app"
 ZIP="Wikiwise-${VERSION}-macOS.zip"
 
@@ -58,13 +59,30 @@ PLIST
 # Inject version
 sed -i '' "s/VERSION_PLACEHOLDER/${VERSION}/" "$APP/Contents/Info.plist"
 
-# Create zip for distribution
+# Code sign
+echo "Signing with: $SIGNING_IDENTITY"
+codesign --deep --force --options runtime --sign "$SIGNING_IDENTITY" "$APP"
+codesign --verify --deep --strict "$APP"
+echo "Signature valid."
+
+# Zip for notarization
+rm -f "$ZIP"
+ditto -c -k --keepParent "$APP" "$ZIP"
+
+# Notarize
+echo "Submitting for notarization..."
+xcrun notarytool submit "$ZIP" --keychain-profile "notarytool" --wait
+
+# Staple
+xcrun stapler staple "$APP"
+
+# Re-zip with stapled ticket
 rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
 
 echo ""
-echo "Built: $APP"
-echo "Zipped: $ZIP ($(du -h "$ZIP" | cut -f1))"
+echo "Done: $ZIP ($(du -h "$ZIP" | cut -f1))"
+echo "Signed, notarized, and stapled."
 echo ""
-echo "To create a GitHub release:"
+echo "To publish:"
 echo "  gh release create v${VERSION} ${ZIP} --title \"Wikiwise v${VERSION}\" --notes \"...\""
