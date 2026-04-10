@@ -171,6 +171,11 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .goForward)) { _ in
             goForward()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .refreshWiki)) { _ in
+            if let c = compiler {
+                recompileCurrentPage(c)
+            }
+        }
         .sheet(isPresented: $showNewWikiSheet) {
             newWikiSheet
         }
@@ -981,6 +986,33 @@ struct ContentView: View {
                 if let current = selectedFileURL,
                    changedPaths.contains(current.path) {
                     recompileCurrentPage(c)
+                }
+                startBackgroundCompilation(c)
+
+            case .rebuild:
+                print("[watcher] Rebuild triggered — full recompile")
+                c.rescan()
+                c.invalidateAll()
+                if selectedFileURL != nil {
+                    recompileCurrentPage(c)
+                }
+                if let root = rootURL {
+                    let previousExpanded = expandedFolders
+                    tree = scanOneLevel(at: root)
+                    let newFolderURLs = Set(tree.filter { $0.isDirectory }.map { $0.url })
+                    expandedFolders = previousExpanded.intersection(newFolderURLs)
+                    for node in tree where node.isDirectory {
+                        if expandedFolders.contains(node.url) {
+                            if let kids = node.children, kids.isEmpty {
+                                expandNode(node)
+                            }
+                        }
+                    }
+                    let snapshot = tree; tree = []; tree = snapshot
+                }
+                // Delete the trigger file after processing
+                if let root = rootURL {
+                    try? FileManager.default.removeItem(at: root.appendingPathComponent(".rebuild"))
                 }
                 startBackgroundCompilation(c)
 

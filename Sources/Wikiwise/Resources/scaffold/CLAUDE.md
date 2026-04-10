@@ -34,6 +34,20 @@ Wiki pages are short blog posts, not reference dumps. Write for a human reader w
 
 Voice: opinionated, direct, declarative. Length: most pages under 800 words.
 
+## Live viewer
+
+The user is reading this wiki in the Wikiwise app, which watches the project directory for changes. When you edit `.md` or `.css` files, the app detects the change via FSEvents and automatically recompiles and refreshes the page the user is viewing.
+
+**If auto-refresh doesn't pick up your changes**, touch the `.rebuild` trigger file at the project root:
+
+```sh
+touch .rebuild
+```
+
+This forces a full recompile of every page and refreshes the current view. The app deletes the file after processing, so it's safe to touch repeatedly. Use this after bulk operations (many files changed at once) or if you suspect the watcher missed something.
+
+**What the user sees:** `.claude/active-file` contains the relative path of the page currently open in the app. Read it to know what the user is looking at.
+
 ## Workflows
 
 **Ingest a new source.** Read it. Create/update the source-summary page at `wiki/sources/<slug>.md`. Propagate claims into relevant concept and entity pages. Update `index.md`. Append to `log.md`.

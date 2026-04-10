@@ -123,7 +123,7 @@ enum WikiScaffold {
         }
 
         // .gitignore for compiled output
-        let gitignore = "site/out/\npublish.json\n"
+        let gitignore = "site/out/\npublish.json\n.rebuild\n"
         try gitignore.write(to: url.appendingPathComponent(".gitignore"), atomically: true, encoding: .utf8)
     }
 }
