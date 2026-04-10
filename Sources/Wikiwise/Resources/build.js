@@ -15,7 +15,7 @@
 //
 // Entry point: compile(sourceDir, outputDir)
 
-var md = markdownit({ html: false, linkify: true, typographer: true });
+var md = markdownit({ html: true, linkify: true, typographer: true });
 
 // ============================================================
 //  Constants
@@ -294,6 +294,34 @@ function compilePage(slug) {
   });
 
   writeFile(htmlPath, html);
+  return true;
+}
+
+// Ad-hoc compile: render any markdown file to HTML, even if it wasn't
+// part of the original scan (e.g. raw/ files). Uses the same styling
+// but no backlinks or search data.
+function compileAdhoc(filePath, outputPath) {
+  var source = readFile(filePath);
+  if (!source) return false;
+
+  var slug = filePath.split('/').pop().replace(/\.md$/i, '').toLowerCase().replace(/ /g, '-');
+  var knownSlugs = _progressive ? _progressive.knownSlugs : {};
+  var rendered = renderPageBody(source, knownSlugs, slug);
+  var css = _progressive ? _progressive.css : (typeof bundledCSS !== 'undefined' ? bundledCSS : '');
+  var tocResult = buildTableOfContents(rendered.html);
+  var articleBody = tocResult.htmlWithIds || rendered.html;
+
+  var html = buildPageHtml({
+    body: articleBody,
+    title: rendered.title,
+    subtitle: rendered.subtitle || '',
+    css: css,
+    tocHtml: tocResult.tocHtml,
+    slug: slug,
+    inlineData: _progressive ? _progressive.inlineData : ''
+  });
+
+  writeFile(outputPath, html);
   return true;
 }
 

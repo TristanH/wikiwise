@@ -696,10 +696,9 @@ struct ContentView: View {
                         },
                         reloadToken: webViewReloadToken
                     )
-                } else {
-                    ProgressView("Compiling…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.contentBg)
+                } else if let url = selectedFileURL {
+                    // No compiled HTML (e.g. raw/ files) — show editor instead
+                    EditorWebView(fileURL: url, fileContent: $fileContent)
                 }
             }
         }
@@ -924,7 +923,10 @@ struct ContentView: View {
             let htmlFile = c.outputDir.appendingPathComponent("\(pageSlug).html")
             // Compile on demand if not yet rendered
             if !FileManager.default.fileExists(atPath: htmlFile.path) {
-                c.compileSingle(slug: pageSlug)
+                if !c.compileSingle(slug: pageSlug) {
+                    // Not in the wiki scan — ad-hoc compile (e.g. raw/ files)
+                    c.compileAdhoc(filePath: url.path, outputPath: htmlFile.path)
+                }
             }
             compiledFileURL = FileManager.default.fileExists(atPath: htmlFile.path) ? htmlFile : nil
         } else {

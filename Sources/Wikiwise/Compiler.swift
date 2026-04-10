@@ -55,6 +55,15 @@ final class Compiler {
         return Int(result?.toInt32() ?? 0)
     }
 
+    /// Ad-hoc compile any markdown file (even outside wiki/) into HTML.
+    @discardableResult
+    func compileAdhoc(filePath: String, outputPath: String) -> Bool {
+        let escapedIn = filePath.replacingOccurrences(of: "'", with: "\\'")
+        let escapedOut = outputPath.replacingOccurrences(of: "'", with: "\\'")
+        let result = jsContext.evaluateScript("compileAdhoc('\(escapedIn)', '\(escapedOut)')")
+        return result?.toBool() ?? false
+    }
+
     /// Invalidate a single page's cached HTML.
     func invalidateSingle(slug: String) {
         let escaped = slug.replacingOccurrences(of: "'", with: "\\'")
