@@ -4,7 +4,7 @@ import Foundation
 ///   raw/
 ///   wiki/  (home.md, index.md, log.md)
 ///   site/  (build.js, style.css, out/)
-///   .claude/skills/  (ingest.md, lint.md, import-readwise.md)
+///   .claude/skills/  (ingest, digest, lint, ingest-tweets, import-readwise, ...)
 ///   CLAUDE.md
 enum WikiScaffold {
 
@@ -70,7 +70,7 @@ enum WikiScaffold {
         }
 
         // Claude Code skills (each is a directory with SKILL.md)
-        let skillDirs = ["ingest", "lint", "import-readwise", "fetch-readwise-document", "fetch-readwise-highlights"]
+        let skillDirs = ["ingest", "digest", "lint", "ingest-tweets", "import-readwise", "fetch-readwise-document", "fetch-readwise-highlights"]
         for skill in skillDirs {
             let source = scaffoldDir.appendingPathComponent("skills/\(skill)")
             let dest = url.appendingPathComponent(".claude/skills/\(skill)")
