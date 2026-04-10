@@ -114,15 +114,15 @@ function compile(sourceDir, outputDir) {
   // Build data indexes for client-side features (search, previews)
   var searchEntries = buildSearchEntries(pages);
   var previews = buildPreviewIndex(pages);
-  var inlineData = '<script>var __searchIndex=' + JSON.stringify(searchEntries) +
-    ';var __previewData=' + JSON.stringify(previews) + ';<\/script>';
+  // Pass 2: assemble final HTML for each page
+  renderAllPages(pages, backlinkMap, css, outputDir);
 
-  // Pass 2: assemble final HTML for each page (with inline data)
-  renderAllPages(pages, backlinkMap, css, outputDir, inlineData);
-
-  // Also write standalone JSON files for non-embedded use
+  // Write data files (shared across all pages via <script src>)
   writeFile(outputDir + '/search.json', JSON.stringify(searchEntries));
   writeFile(outputDir + '/previews.json', JSON.stringify(previews));
+  writeFile(outputDir + '/search.json.js',
+    'var __searchIndex=' + JSON.stringify(searchEntries) +
+    ';var __previewData=' + JSON.stringify(previews) + ';');
 
   // Generate graph + map visualizations
   writeGraph(pages, css, outputDir);
@@ -217,12 +217,12 @@ function scanPages(sourceDir, outputDir) {
   // Build data indexes for client-side features (search, previews)
   var searchEntries = buildSearchEntries(pages);
   var previews = buildPreviewIndex(pages);
-  var inlineData = '<script>var __searchIndex=' + JSON.stringify(searchEntries) +
-    ';var __previewData=' + JSON.stringify(previews) + ';<\/script>';
-
-  // Write data files so search/popovers/graph work immediately
+  // Write data files (shared across all pages via <script src>)
   writeFile(outputDir + '/search.json', JSON.stringify(searchEntries));
   writeFile(outputDir + '/previews.json', JSON.stringify(previews));
+  writeFile(outputDir + '/search.json.js',
+    'var __searchIndex=' + JSON.stringify(searchEntries) +
+    ';var __previewData=' + JSON.stringify(previews) + ';');
   writeGraph(pages, css, outputDir);
   compileMap(sourceDir, outputDir);
 
@@ -244,7 +244,7 @@ function scanPages(sourceDir, outputDir) {
     css: css,
     outputDir: outputDir,
     pending: pending,
-    inlineData: inlineData
+    
   };
 
   // Save cache (html will be null for un-rendered pages — that's fine,
@@ -290,7 +290,7 @@ function compilePage(slug) {
     css: state.css,
     tocHtml: tocResult.tocHtml,
     slug: slug,
-    inlineData: state.inlineData
+    
   });
 
   writeFile(htmlPath, html);
@@ -318,7 +318,7 @@ function compileAdhoc(filePath, outputPath) {
     css: css,
     tocHtml: tocResult.tocHtml,
     slug: slug,
-    inlineData: _progressive ? _progressive.inlineData : ''
+    
   });
 
   writeFile(outputPath, html);
@@ -423,7 +423,7 @@ function parseAllPages(markdownFiles, knownSlugs, cache) {
 //  Pass 2: Render final HTML pages
 // ============================================================
 
-function renderAllPages(pages, backlinkMap, css, outputDir, inlineData) {
+function renderAllPages(pages, backlinkMap, css, outputDir) {
   for (var pageSlug in pages) {
     var page = pages[pageSlug];
     var backlinksHtml = renderBacklinks(backlinkMap[pageSlug] || [], pages);
@@ -437,7 +437,7 @@ function renderAllPages(pages, backlinkMap, css, outputDir, inlineData) {
       css: css,
       tocHtml: tocResult.tocHtml,
       slug: pageSlug,
-      inlineData: inlineData
+      
     });
 
     writeFile(outputDir + '/' + pageSlug + '.html', html);
@@ -574,7 +574,7 @@ function buildPageHtml(options) {
     '<meta name="viewport" content="width=device-width,initial-scale=1">',
     '<title>' + escapeHtml(options.title) + ' \u2014 ' + escapeHtml(wikiName) + '</title>',
     FONT_LINKS,
-    '<style>' + options.css + '</style>',
+    '<link rel="stylesheet" href="style.css">',
     '</head>',
     '<body class="page-' + escapeHtml(options.slug) + '">',
     buildMasthead(),
@@ -590,7 +590,7 @@ function buildPageHtml(options) {
     '</div>',
     '</div>',
     '</div>',
-    (options.inlineData || ''),
+    '<script src="search.json.js"><\/script>',
     '<script src="app.js"><\/script>',
     '</body>',
     '</html>'
