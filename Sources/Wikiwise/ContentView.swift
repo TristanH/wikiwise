@@ -90,6 +90,7 @@ extension Color {
     static let dividerGray       = adaptive(light: (0xD9, 0xCF, 0xB9), dark: (0x2A, 0x24, 0x19))
     static let accentGold        = Color(red: 0xC2/255, green: 0xA9/255, blue: 0x6B/255)
     static let accentPrimary     = adaptive(light: (0x7A, 0x1F, 0x1F), dark: (0xC2, 0xA9, 0x6B))
+    static let accentPrimaryText = adaptive(light: (0xFF, 0xFF, 0xFF), dark: (0x1A, 0x17, 0x14))
     static let infoValue         = adaptive(light: (0x3A, 0x2F, 0x1C), dark: (0xCF, 0xC3, 0xA3))
     static let linkedText        = adaptive(light: (0x5B, 0x52, 0x40), dark: (0x8A, 0x7D, 0x62))
     static let folderStroke      = adaptive(light: (0x9A, 0x8C, 0x6E), dark: (0x8A, 0x7D, 0x62))
@@ -255,7 +256,7 @@ struct ContentView: View {
                             Image(systemName: "plus.circle")
                             Text("Create a New Wiki")
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.accentPrimaryText)
                         .frame(width: 220)
                         .padding(.vertical, 8)
                         .background(Color.accentPrimary)
