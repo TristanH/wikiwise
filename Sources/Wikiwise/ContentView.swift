@@ -127,6 +127,8 @@ struct ContentView: View {
     @State private var isPublishing = false
     @State private var showPublishConfirm = false
     @State private var pendingSubdomain = ""
+    @State private var subdomainAvailability: SubdomainAvailability = .unknown
+    @State private var availabilityCheckWork: DispatchWorkItem? = nil
     @State private var publishResult: PublishResult? = nil
     @State private var publishError: String? = nil
     @State private var publishConfig: PublishConfig? = nil
@@ -519,8 +521,15 @@ struct ContentView: View {
 
                     Button {
                         if publishConfig == nil {
+                            // First publish — show sheet to pick subdomain
+                            showPublishConfirm = true
+                        } else if NSEvent.modifierFlags.contains(.option) {
+                            // Option-click — show sheet to change subdomain
+                            pendingSubdomain = publishConfig?.subdomain ?? ""
+                            subdomainAvailability = .owned
                             showPublishConfirm = true
                         } else {
+                            // Normal re-publish to same subdomain
                             performPublish()
                         }
                     } label: {
@@ -550,7 +559,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(isPublishing || compiler == nil)
-                    .help(publishConfig.map { "Last published: \($0.lastPublishedAt ?? "never")\n\($0.url)" } ?? "Publish wiki to wiki-wise.com")
+                    .help(publishConfig.map { "Last published: \($0.lastPublishedAt ?? "never")\n\($0.url)\n\u{2325}-click to change URL" } ?? "Publish wiki to wiki-wise.com")
 
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -1076,7 +1085,7 @@ struct ContentView: View {
         publishConfig = try? Publisher.loadConfig(projectRoot: root)
     }
 
-    private func performPublish() {
+    private func performPublish(subdomain: String? = nil) {
         guard let root = rootURL, let c = compiler else { return }
         isPublishing = true
         publishError = nil
@@ -1086,7 +1095,7 @@ struct ContentView: View {
             do {
                 // Recompile to ensure output is fresh
                 c.compileAll()
-                let result = try await Publisher.publish(siteFolder: c.outputDir, projectRoot: root)
+                let result = try await Publisher.publish(siteFolder: c.outputDir, projectRoot: root, subdomain: subdomain)
                 await MainActor.run {
                     isPublishing = false
                     publishResult = result
@@ -1107,40 +1116,138 @@ struct ContentView: View {
             Text("Publish your wiki")
                 .font(.system(size: 18, weight: .medium, design: .serif))
 
-            Text("This will make your wiki publicly available at:")
+            Text("Your wiki will be available at:")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 
-            Text("https://\(pendingSubdomain).wiki-wise.com")
-                .font(.system(size: 13, design: .monospaced))
-                .textSelection(.enabled)
-                .padding(8)
-                .background(RoundedRectangle(cornerRadius: 4).fill(Color.sidebarBg))
+            // Editable subdomain field
+            HStack(spacing: 0) {
+                Text("https://")
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                TextField("subdomain", text: $pendingSubdomain)
+                    .font(.system(size: 13, design: .monospaced))
+                    .textFieldStyle(.plain)
+                    .frame(maxWidth: 200)
+                    .onChange(of: pendingSubdomain) { _, newValue in
+                        // Sanitize: lowercase, only alphanumeric and hyphens
+                        let sanitized = newValue.lowercased()
+                            .filter { $0.isLetter || $0.isNumber || $0 == "-" }
+                        if sanitized != newValue {
+                            pendingSubdomain = sanitized
+                            return
+                        }
+                        checkSubdomainAvailability(sanitized)
+                    }
+                Text(".wiki-wise.com")
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundStyle(.secondary)
 
-            Text("Anyone with this link can view your wiki. A publish.json file will be saved in your project \u{2014} it contains your publish token. Treat it like a password: if you lose it, you won\u{2019}t be able to update this site.")
+                Spacer()
+
+                // Availability indicator
+                Group {
+                    switch subdomainAvailability {
+                    case .checking:
+                        ProgressView()
+                            .controlSize(.small)
+                    case .available:
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    case .owned:
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.blue)
+                    case .taken:
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.red)
+                    case .invalid:
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundStyle(.orange)
+                    case .unknown:
+                        EmptyView()
+                    }
+                }
+                .frame(width: 16, height: 16)
+            }
+            .padding(8)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Color.sidebarBg))
+
+            // Availability hint text
+            Group {
+                switch subdomainAvailability {
+                case .taken:
+                    Text("This name is already taken. Try another.")
+                        .foregroundStyle(.red)
+                case .invalid:
+                    Text("3\u{2013}48 characters, letters, numbers, and hyphens only.")
+                        .foregroundStyle(.orange)
+                case .owned:
+                    Text("You already own this name.")
+                        .foregroundStyle(.blue)
+                default:
+                    Text("Anyone with this link can view your wiki.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.system(size: 12))
+
+            Text("A publish.json file will be saved in your project \u{2014} it contains your publish token. Treat it like a password: if you lose it, you won\u{2019}t be able to update this site.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineSpacing(2)
 
             HStack {
                 Spacer()
-                Button("Cancel") { showPublishConfirm = false }
-                    .keyboardShortcut(.cancelAction)
+                Button("Cancel") {
+                    showPublishConfirm = false
+                }
+                .keyboardShortcut(.cancelAction)
                 Button("Publish") {
                     showPublishConfirm = false
-                    performPublish()
+                    performPublish(subdomain: pendingSubdomain)
                 }
                 .keyboardShortcut(.defaultAction)
+                .disabled(!canPublish)
             }
         }
         .padding(24)
-        .frame(width: 440)
+        .frame(width: 480)
         .onAppear {
             if pendingSubdomain.isEmpty {
                 let wikiName = rootURL?.lastPathComponent
                 pendingSubdomain = Publisher.randomSubdomain(wikiName: wikiName)
             }
         }
+    }
+
+    private var canPublish: Bool {
+        switch subdomainAvailability {
+        case .available, .owned: return true
+        default: return false
+        }
+    }
+
+    private func checkSubdomainAvailability(_ subdomain: String) {
+        availabilityCheckWork?.cancel()
+        guard subdomain.count >= 3 else {
+            subdomainAvailability = subdomain.isEmpty ? .unknown : .invalid
+            return
+        }
+        subdomainAvailability = .checking
+        let work = DispatchWorkItem {
+            Task {
+                let token = publishConfig?.token
+                let result = await Publisher.checkAvailability(subdomain: subdomain, token: token)
+                await MainActor.run {
+                    // Only update if the subdomain hasn't changed while we were checking
+                    if pendingSubdomain == subdomain {
+                        subdomainAvailability = result
+                    }
+                }
+            }
+        }
+        availabilityCheckWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
     }
 
     // MARK: - Post-Creation Guide
