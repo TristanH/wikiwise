@@ -16,17 +16,19 @@ Goal: take one or more raw files that already have a wiki summary page (created 
 ## Preconditions
 
 - At least one source-summary page in `wiki/` whose claims haven't been fully propagated.
-- You have read `CLAUDE.md` and `wiki/home.md` at least once in this session.
+- You have read the wiki schema (`CLAUDE.md` or `AGENTS.md`) and `wiki/home.md` at least once in this session.
 
 ## Architecture
 
-Delegate the heavy lifting to a **subagent**. The main thread's job is:
+If your agent supports subagents (e.g., Claude Code's `Agent` tool), delegate the heavy lifting:
 1. Identify which sources need digesting.
-2. Read `CLAUDE.md`, `wiki/home.md`, and `wiki/index.md` to understand the current wiki state.
+2. Read the wiki schema, `wiki/home.md`, and `wiki/index.md` to understand the current wiki state.
 3. Dispatch a subagent with a tight brief (see template below).
 4. Receive the subagent's report and relay it concisely to the user.
 
 **Why delegate:** the main thread should not hold multiple source bodies simultaneously. The subagent reads sources once, makes surgical edits, and returns a diff summary.
+
+If your agent does **not** support subagents (e.g., Codex, Cursor), do the work inline — read the schema, identify sources, and make the edits yourself following the same rules in the subagent brief below.
 
 ## Step 1 — Identify sources to digest
 
@@ -41,17 +43,17 @@ Confirm with the user before digesting if there's ambiguity.
 
 ## Step 2 — Load the wiki's current state
 
-Read these three files and pass their content to the subagent:
+Read these three files (and pass their content to the subagent, if using one):
 
-- `CLAUDE.md` — schema, conventions.
+- `CLAUDE.md` (or `AGENTS.md`) — schema, conventions.
 - `wiki/home.md` — current through-line and live tensions.
 - `wiki/index.md` — full catalog of existing pages.
 
-## Step 3 — Dispatch the digest subagent
+## Step 3 — Dispatch the digest subagent (or do it inline)
 
-Launch a subagent with this brief (adapt per run):
+If using subagents, launch one with this brief (adapt per run). Otherwise, follow these same instructions yourself:
 
-> **Job:** Digest source(s) into the wiki. Follow `CLAUDE.md` exactly.
+> **Job:** Digest source(s) into the wiki. Follow the wiki schema (`CLAUDE.md` / `AGENTS.md`) exactly.
 >
 > **Sources to digest:** `<list of wiki source-summary pages>`
 >
@@ -76,9 +78,9 @@ Launch a subagent with this brief (adapt per run):
 > **Rules:**
 >
 > - **Never modify `raw/`.** Read-only.
-> - **Stay flat.** No subdirectories inside `wiki/`.
+> - **Stay flat.** No new subdirectories inside `wiki/` — `wiki/sources/` is the only allowed subdirectory.
 > - **Don't invent facts.** If the source doesn't say something, don't claim it.
-> - **Don't touch `CLAUDE.md` or `home.md`** unless the source forces a schema change (rare — flag it, don't just do it).
+> - **Don't touch schema files (`CLAUDE.md`, `AGENTS.md`) or `home.md`** unless the source forces a schema change (rare — flag it, don't just do it).
 > - **Don't rewrite existing pages wholesale.** Surgical edits only.
 > - **Don't duplicate content across pages.** One canonical home per claim, others link.
 >
@@ -101,11 +103,10 @@ Then ask the user if anything needs adjustment.
 
 ## Batching multiple sources
 
-If multiple sources need digesting, dispatch **one** subagent for all of them rather than one per source. Cross-references between sources stay coherent that way.
+If multiple sources need digesting and you're using subagents, dispatch **one** subagent for all of them rather than one per source. Cross-references between sources stay coherent that way.
 
 ## Rules
 
-- **Never** pre-read raws in the main thread before dispatching. The subagent reads them.
-- **Never** skip Step 2. The subagent needs that context.
+- **Never** skip Step 2. You (or the subagent) need that context.
 - **Never** run this on a source without an existing summary page — run `ingest` first.
-- **Prefer one subagent for all sources** over N subagents for N sources.
+- If using subagents: **never** pre-read raws in the main thread before dispatching. The subagent reads them. Prefer one subagent for all sources over N subagents for N sources.
