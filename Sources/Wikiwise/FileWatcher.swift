@@ -85,7 +85,9 @@ final class FileWatcher {
 
             let filename = (path as NSString).lastPathComponent
 
-            if filename == ".rebuild" {
+            if filename == ".rebuild"
+                && path == watcher.watchedDir + "/.rebuild"
+                && (flag & kFSEventStreamEventFlagItemRemoved) == 0 {
                 watcher.pendingRebuild = true
             } else if path.hasSuffix(".css") {
                 watcher.pendingCSS = true
