@@ -105,7 +105,8 @@ Report: number of parent docs landed, filenames, match counts, and any docs you 
 
 ## Rules
 
-- **Never** run `readwise-search-highlights` with stdout going to tool output — always redirect to `/tmp/` or `raw/`.
+- **Never** run `readwise-search-highlights` with stdout going to tool output — always redirect to `/tmp/`.
+- **Never** write JSON files to `raw/` — all raw files must be markdown (`.md`). Temp JSON goes in `/tmp/`.
 - **Never** `Read` or `cat` a `raw/` file you just wrote unless the user explicitly asks.
 - **Always confirm** the query set with the user before searching.
 - **Always chain into `ingest`** unless the user said "just fetch."

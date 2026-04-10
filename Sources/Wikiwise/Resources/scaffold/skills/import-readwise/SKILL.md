@@ -77,6 +77,8 @@ Once the user has picked what to import, delegate to the appropriate skill:
 
 Both skills chain into `ingest` automatically to create wiki pages from the raws.
 
+**Important:** All files in `raw/` must be markdown (`.md`), never JSON. Temp JSON files from CLI queries go in `/tmp/`, not `raw/`. If you need to store structured data from Readwise, convert it to a readable markdown document before saving to `raw/`.
+
 ## Step 4: Update wiki infrastructure
 
 After ingest completes:
