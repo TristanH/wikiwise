@@ -6,3 +6,5 @@
 *.swiftdeps~
 DerivedData/
 xcuserdata/
+Wikiwise.app/
+Wikiwise-*.zip
