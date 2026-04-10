@@ -70,7 +70,7 @@ enum WikiScaffold {
         }
 
         // Claude Code skills (each is a directory with SKILL.md)
-        let skillDirs = ["ingest", "digest", "lint", "ingest-tweets", "import-readwise", "fetch-readwise-document", "fetch-readwise-highlights"]
+        let skillDirs = ["ingest", "digest", "lint", "ingest-tweets", "import-readwise", "fetch-readwise-document", "fetch-readwise-highlights", "upgrade"]
         for skill in skillDirs {
             let source = scaffoldDir.appendingPathComponent("skills/\(skill)")
             let dest = url.appendingPathComponent(".claude/skills/\(skill)")
@@ -121,6 +121,13 @@ enum WikiScaffold {
                 try fm.copyItem(at: source, to: url.appendingPathComponent(file.dest))
             }
         }
+
+        // Scaffold version marker — records when this wiki was created so /upgrade
+        // can diff against the latest scaffold on GitHub.
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withFullDate]
+        let versionInfo = "created:\(dateFormatter.string(from: Date()))\n"
+        try versionInfo.write(to: url.appendingPathComponent(".claude/scaffold-version"), atomically: true, encoding: .utf8)
 
         // .gitignore for compiled output
         let gitignore = "site/out/\npublish.json\n.rebuild\n"
