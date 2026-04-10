@@ -32,6 +32,44 @@
   .nav-toggle a:last-child { border-right: none; }
   .nav-toggle a:hover { background: rgba(42, 157, 143, 0.12); color: rgba(255,255,255,0.7); }
   .nav-toggle a.active { background: #2A9D8F; color: #0a0a0a; }
+  .theme-toggle {
+    padding: 4px 10px; font-size: 1rem; cursor: pointer;
+    color: rgba(255,255,255,0.4); transition: color 0.15s;
+    user-select: none; line-height: 1;
+  }
+  .theme-toggle:hover { color: rgba(255,255,255,0.8); }
+
+  /* ── Light mode overrides ── */
+  body.light { background: #fbfaf5; color: #1a1612; }
+  body.light .nav-toggle { background: rgba(251,250,245,0.9); border-color: #e3dccb; }
+  body.light .nav-toggle a { color: #948b7e; border-color: #e3dccb; }
+  body.light .nav-toggle a:hover { background: rgba(122,31,31,0.08); color: #5B5240; }
+  body.light .nav-toggle a.active { background: #7a1f1f; color: #fbfaf5; }
+  body.light .theme-toggle { color: #948b7e; }
+  body.light .theme-toggle:hover { color: #5B5240; }
+  body.light .stats-panel { background: rgba(251,250,245,0.9); border-color: #e3dccb; color: #6c645a; }
+  body.light .stats-panel strong { color: #7a1f1f; }
+  body.light .legend-panel { background: rgba(251,250,245,0.9); border-color: #e3dccb; color: #5B5240; }
+  body.light .legend-panel h4 { color: #948b7e; }
+  body.light .tooltip-3d { background: rgba(251,250,245,0.95); border-color: #e3dccb; color: #1a1612; }
+  body.light .tooltip-3d .tip-title { color: #1a1612; }
+  body.light .tooltip-3d .tip-lead { color: #6c645a; }
+  body.light .help-bar { background: rgba(251,250,245,0.8); color: #948b7e; }
+  body.light .detail-panel { background: rgba(251,250,245,0.95); border-color: #e3dccb; }
+  body.light .detail-header { border-color: #e3dccb; }
+  body.light .detail-type { color: #7a1f1f; }
+  body.light .detail-link { color: #7a1f1f; border-color: #7a1f1f; }
+  body.light .detail-link:hover { background: rgba(122,31,31,0.08); }
+  body.light .detail-close { color: #948b7e; }
+  body.light .detail-close:hover { color: #1a1612; }
+  body.light .detail-body { color: #2c2722; }
+  body.light .detail-body h1 { color: #1a1612; }
+  body.light .detail-body .detail-meta { color: #948b7e; }
+  body.light .detail-body .detail-lead { color: #6c645a; }
+  body.light .detail-body .detail-links { border-color: #e3dccb; }
+  body.light .detail-body .detail-links h4 { color: #948b7e; }
+  body.light .detail-body .detail-links a { color: #7a1f1f; }
+  body.light .scanlines { display: none; }
 
   /* ── Stats ── */
   .stats-panel {
@@ -160,7 +198,7 @@
   }
 </style>
 </head>
-<body>
+<body class="light">
 <div id="scene-container"></div>
 <div class="scanlines"></div>
 
@@ -168,6 +206,7 @@
   <a href="map.html">Map</a>
   <a href="map-3d.html" class="active">3D</a>
   <a href="graph.html">Classic</a>
+  <span class="theme-toggle" id="theme-toggle" title="Toggle light/dark">&#9681;</span>
 </div>
 
 <div class="stats-panel" id="stats-panel"></div>
@@ -218,21 +257,40 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
   var nodes = mapData.nodes;
   var edges = mapData.edges;
 
-  // ── Category colors (SGI saturated) ──
-  var COLORS = {
-    concept:  0x00ff88,
-    source:   0xff6633,
-    question: 0x44aaff,
-    entity:   0xffaa00,
-    special:  0x888888
+  // ── Theme palettes ──
+  var THEMES = {
+    dark: {
+      bg: 0x0a0a0a,
+      fog: 0x0a0a0a,
+      ground: 0x0a0f0a,
+      grid1: 0x0a2a1a, grid2: 0x1a4a2a,
+      ambient: 0x111122, ambientI: 0.6,
+      dir: 0xffffff, dirI: 1.2,
+      rim: 0x2A9D8F, rimI: 0.4,
+      edge: 0x2A9D8F,
+      colors: { concept: 0x00ff88, source: 0xff6633, question: 0x44aaff, entity: 0xffaa00, special: 0x888888 },
+      colorHex: { concept: '#00ff88', source: '#ff6633', question: '#44aaff', entity: '#ffaa00', special: '#888888' },
+      label: function(c) { return '#' + c.toString(16).padStart(6, '0'); }
+    },
+    light: {
+      bg: 0xfbfaf5,
+      fog: 0xfbfaf5,
+      ground: 0xf3ede0,
+      grid1: 0xe3dccb, grid2: 0xd9cfb9,
+      ambient: 0xffffff, ambientI: 0.8,
+      dir: 0xffeedd, dirI: 1.0,
+      rim: 0x7a1f1f, rimI: 0.2,
+      edge: 0x7a1f1f,
+      colors: { concept: 0x4f8a6d, source: 0xc77a3c, question: 0x4a7ca6, entity: 0xb8963c, special: 0x9a8a77 },
+      colorHex: { concept: '#4f8a6d', source: '#c77a3c', question: '#4a7ca6', entity: '#b8963c', special: '#9a8a77' },
+      label: function(c) { return '#' + c.toString(16).padStart(6, '0'); }
+    }
   };
-  var COLOR_HEX = {
-    concept:  '#00ff88',
-    source:   '#ff6633',
-    question: '#44aaff',
-    entity:   '#ffaa00',
-    special:  '#888888'
-  };
+
+  var currentTheme = 'light';
+  var T = THEMES[currentTheme];
+  var COLORS = T.colors;
+  var COLOR_HEX = T.colorHex;
   var CATEGORY_LABELS = {
     concept: 'Concepts', source: 'Sources', question: 'Questions',
     entity: 'Entities', special: 'Meta'
@@ -241,8 +299,8 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
   // ── Scene setup ──
   var container = document.getElementById('scene-container');
   var scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0a0a);
-  scene.fog = new THREE.FogExp2(0x0a0a0a, 0.0004);
+  scene.background = new THREE.Color(T.bg);
+  scene.fog = new THREE.FogExp2(T.fog, 0.0004);
 
   var camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 10000);
   camera.position.set(-200, 350, 900);
@@ -265,10 +323,10 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
   controls.target.set(0, 30, -200);
 
   // ── Lighting (dramatic SGI) ──
-  var ambientLight = new THREE.AmbientLight(0x111122, 0.6);
+  var ambientLight = new THREE.AmbientLight(T.ambient, T.ambientI);
   scene.add(ambientLight);
 
-  var dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  var dirLight = new THREE.DirectionalLight(T.dir, T.dirI);
   dirLight.position.set(200, 500, 300);
   dirLight.castShadow = true;
   dirLight.shadow.mapSize.width = 2048;
@@ -281,14 +339,14 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
   dirLight.shadow.camera.bottom = -1000;
   scene.add(dirLight);
 
-  var rimLight = new THREE.DirectionalLight(0x2A9D8F, 0.4);
+  var rimLight = new THREE.DirectionalLight(T.rim, T.rimI);
   rimLight.position.set(-300, 200, -200);
   scene.add(rimLight);
 
   // ── Ground plane ──
   var groundGeo = new THREE.PlaneGeometry(6000, 6000);
   var groundMat = new THREE.MeshStandardMaterial({
-    color: 0x0a0f0a, roughness: 0.95, metalness: 0.1
+    color: T.ground, roughness: 0.95, metalness: 0.1
   });
   var ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
@@ -297,12 +355,11 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
   scene.add(ground);
 
   // ── Grid lines on ground ──
-  var gridHelper = new THREE.GridHelper(4000, 80, 0x0a2a1a, 0x0a1a14);
+  var gridHelper = new THREE.GridHelper(4000, 80, T.grid1, T.grid1);
   gridHelper.position.y = 0.1;
   scene.add(gridHelper);
 
-  // Brighter grid at larger intervals
-  var gridHelper2 = new THREE.GridHelper(4000, 20, 0x1a4a2a, 0x1a4a2a);
+  var gridHelper2 = new THREE.GridHelper(4000, 20, T.grid2, T.grid2);
   gridHelper2.position.y = 0.2;
   scene.add(gridHelper2);
 
@@ -367,21 +424,28 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
     var labelCanvas = document.createElement('canvas');
     var labelCtx = labelCanvas.getContext('2d');
     var text = node.label.replace(/[~…]/g, '');
-    if (text.length > 18) text = text.substring(0, 16) + '..';
-    labelCanvas.width = 512;
-    labelCanvas.height = 64;
-    labelCtx.fillStyle = 'rgba(0,0,0,0)';
-    labelCtx.fillRect(0, 0, 512, 64);
-    labelCtx.font = '700 36px monospace';
+    if (text.length > 22) text = text.substring(0, 20) + '..';
+    labelCanvas.width = 1024;
+    labelCanvas.height = 128;
+    labelCtx.font = '600 44px monospace';
     labelCtx.textAlign = 'center';
-    labelCtx.fillStyle = '#' + color.toString(16).padStart(6, '0');
-    labelCtx.fillText(text, 256, 44);
+    // Measure text to draw a background pill
+    var tw = labelCtx.measureText(text).width;
+    var px = 20, py = 10;
+    var rx = 512 - tw/2 - px, ry = 38 - py;
+    var rw = tw + px*2, rh = 56 + py*2;
+    labelCtx.fillStyle = currentTheme === 'light' ? 'rgba(251,250,245,0.88)' : 'rgba(10,10,10,0.75)';
+    labelCtx.beginPath();
+    labelCtx.roundRect(rx, ry, rw, rh, 8);
+    labelCtx.fill();
+    labelCtx.fillStyle = currentTheme === 'light' ? '#3A2F1C' : '#' + color.toString(16).padStart(6, '0');
+    labelCtx.fillText(text, 512, 80);
 
     var labelTexture = new THREE.CanvasTexture(labelCanvas);
     labelTexture.minFilter = THREE.LinearFilter;
     var labelMat = new THREE.SpriteMaterial({ map: labelTexture, transparent: true, depthTest: false });
     var sprite = new THREE.Sprite(labelMat);
-    sprite.scale.set(100, 12.5, 1);
+    sprite.scale.set(120, 15, 1);
     sprite.position.set(x, height + 12, z);
     sprite.renderOrder = 1;
     labelByNodeId[node.id] = sprite;
@@ -402,8 +466,10 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
   });
 
   var edgeLines = []; // { line, source, target }
-  var highlightGroup = new THREE.Group();
+  var highlightGroup = new THREE.Group();     // hover highlights (cleared on unhover)
   scene.add(highlightGroup);
+  var selectionEdgeGroup = new THREE.Group(); // selection highlights (persist while panel open)
+  scene.add(selectionEdgeGroup);
 
   function buildEdges() {
     while (edgeGroup.children.length > 0) edgeGroup.remove(edgeGroup.children[0]);
@@ -529,16 +595,21 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 
   function unhover() {
     if (!hoveredMesh) return;
-    hoveredMesh.material.emissiveIntensity = 0.08;
-    hoveredMesh.scale.y = 1;
-    hoveredMesh.position.y = hoveredMesh.userData.baseHeight / 2;
+    // Don't reset the selected node's visual state
+    if (hoveredMesh.userData.nodeId !== selectedNodeId) {
+      hoveredMesh.material.emissiveIntensity = 0.08;
+      hoveredMesh.scale.y = 1;
+      hoveredMesh.position.y = hoveredMesh.userData.baseHeight / 2;
+    }
 
     var sprite = labelByNodeId[hoveredMesh.userData.nodeId];
     if (sprite) sprite.material.opacity = 1.0;
 
-    // Reset all edges
+    // Reset hover edges (but keep selection edges hidden)
     while (highlightGroup.children.length > 0) highlightGroup.remove(highlightGroup.children[0]);
     edgeLines.forEach(function (line) {
+      // Only restore if not hidden by the active selection
+      if (selectedNodeId && (line.userData.source === selectedNodeId || line.userData.target === selectedNodeId)) return;
       line.visible = true;
     });
 
@@ -603,10 +674,117 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 
   var legendPanel = document.getElementById('legend-panel');
 
+  // Selection effects for clicked node
+  // Ground glow disc
+  var glowGeo = new THREE.CircleGeometry(55, 32);
+  glowGeo.rotateX(-Math.PI / 2);
+  var glowMat = new THREE.MeshBasicMaterial({ color: 0x7a1f1f, transparent: true, opacity: 0, side: THREE.DoubleSide });
+  var selectionGlow = new THREE.Mesh(glowGeo, glowMat);
+  selectionGlow.position.y = 0.3;
+  scene.add(selectionGlow);
+
+  // Outer ring
+  var ringGeo = new THREE.RingGeometry(48, 55, 32);
+  ringGeo.rotateX(-Math.PI / 2);
+  var ringMat = new THREE.MeshBasicMaterial({ color: 0x7a1f1f, transparent: true, opacity: 0, side: THREE.DoubleSide });
+  var selectionRing = new THREE.Mesh(ringGeo, ringMat);
+  selectionRing.position.y = 0.5;
+  scene.add(selectionRing);
+
+  // Vertical beam — layered for soft glow
+  var beamGroup = new THREE.Group();
+  scene.add(beamGroup);
+  var beamLayers = [];
+  var beamRadii = [
+    { top: 2, bot: 20, opacity: 0.1 },
+    { top: 6, bot: 35, opacity: 0.06 },
+    { top: 12, bot: 50, opacity: 0.03 },
+  ];
+  beamRadii.forEach(function (layer) {
+    var geo = new THREE.CylinderGeometry(layer.top, layer.bot, 250, 16, 1, true);
+    var mat = new THREE.MeshBasicMaterial({ color: 0xC2A96B, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.userData.baseOpacity = layer.opacity;
+    beamLayers.push(mesh);
+    beamGroup.add(mesh);
+  });
+
+  var selectedNodeId = null;
+
   function showDetail(nodeId) {
     var node = nodeById[nodeId];
     var p = previews[nodeId];
     if (!node) return;
+
+    // Restore ALL nodes and edges to original state first
+    while (selectionEdgeGroup.children.length > 0) selectionEdgeGroup.remove(selectionEdgeGroup.children[0]);
+    edgeLines.forEach(function (line) { line.visible = true; });
+    nodeMeshes.forEach(function (m) {
+      m.material.color.set(m.userData.baseColor);
+      m.material.emissive.set(m.userData.baseColor);
+      m.material.emissiveIntensity = 0.08;
+      m.scale.set(1, 1, 1);
+      m.position.y = m.userData.baseHeight / 2;
+    });
+
+    // Highlight selected node
+    selectedNodeId = nodeId;
+    var mesh = meshByNodeId[nodeId];
+    if (mesh) {
+      var accentColor = currentTheme === 'light' ? 0xC2A96B : 0x2A9D8F;
+      mesh.material.emissiveIntensity = 0.6;
+      mesh.scale.set(1.1, 1.25, 1.1);
+      mesh.position.y = mesh.userData.baseHeight * 1.25 / 2;
+
+      // Ground glow
+      selectionGlow.position.set(mesh.position.x, 0.3, mesh.position.z);
+      glowMat.color.set(accentColor);
+      glowMat.opacity = 0.2;
+
+      // Ring
+      selectionRing.position.set(mesh.position.x, 0.5, mesh.position.z);
+      ringMat.color.set(accentColor);
+      ringMat.opacity = 0.5;
+
+      // Beam — soft layered glow
+      beamGroup.position.set(mesh.position.x, mesh.userData.baseHeight + 125, mesh.position.z);
+      beamLayers.forEach(function (layer) {
+        layer.material.color.set(accentColor);
+        layer.material.opacity = layer.userData.baseOpacity;
+      });
+
+      // Highlight connected edges with fat lines (persistent selection)
+      while (selectionEdgeGroup.children.length > 0) selectionEdgeGroup.remove(selectionEdgeGroup.children[0]);
+      var nbrs = neighbors[nodeId] || [];
+      edgeLines.forEach(function (line) {
+        if (line.userData.source === nodeId || line.userData.target === nodeId) {
+          line.visible = false;
+          var sn = nodeById[line.userData.source];
+          var tn = nodeById[line.userData.target];
+          if (sn && tn) {
+            var midY = Math.max(sn._height, tn._height) * 0.5 + 4;
+            var positions = [sn._wx, 1, sn._wz, sn._wx, midY, sn._wz, tn._wx, midY, tn._wz, tn._wx, 1, tn._wz];
+            var geo = new LineGeometry();
+            geo.setPositions(positions);
+            var mat = new LineMaterial({ color: 0x2A9D8F, linewidth: 4, transparent: true, opacity: 0.9 });
+            mat.resolution.set(window.innerWidth, window.innerHeight);
+            var fatLine = new Line2(geo, mat);
+            fatLine.computeLineDistances();
+            selectionEdgeGroup.add(fatLine);
+          }
+        }
+      });
+
+      // Dim unconnected nodes by blending toward background
+      var bgColor = new THREE.Color(T.bg);
+      nodeMeshes.forEach(function (m) {
+        if (m === mesh || nbrs.includes(m.userData.nodeId)) return;
+        var base = new THREE.Color(m.userData.baseColor);
+        m.material.color.copy(base).lerp(bgColor, 0.75);
+        m.material.emissive.copy(base).lerp(bgColor, 0.75);
+        m.material.emissiveIntensity = 0.02;
+      });
+    }
 
     var cat = node.category || '';
     detailType.textContent = CATEGORY_LABELS_PANEL[cat] || cat.toUpperCase();
@@ -642,6 +820,24 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
   function hideDetail() {
     detailPanel.classList.remove('open');
     legendPanel.style.display = '';
+    glowMat.opacity = 0;
+    ringMat.opacity = 0;
+    beamLayers.forEach(function (layer) { layer.material.opacity = 0; });
+    // Restore selection edges
+    while (selectionEdgeGroup.children.length > 0) selectionEdgeGroup.remove(selectionEdgeGroup.children[0]);
+    edgeLines.forEach(function (line) { line.visible = true; });
+    // Restore all nodes to original colors
+    nodeMeshes.forEach(function (m) {
+      m.material.color.set(m.userData.baseColor);
+      m.material.emissive.set(m.userData.baseColor);
+      m.material.emissiveIntensity = 0.08;
+    });
+    if (selectedNodeId && meshByNodeId[selectedNodeId]) {
+      var m = meshByNodeId[selectedNodeId];
+      m.scale.set(1, 1, 1);
+      m.position.y = m.userData.baseHeight / 2;
+    }
+    selectedNodeId = null;
   }
 
   detailClose.addEventListener('click', hideDetail);
@@ -704,6 +900,77 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // ── Theme toggle ──
+  document.getElementById('theme-toggle').addEventListener('click', function () {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    T = THEMES[currentTheme];
+    COLORS = T.colors;
+    COLOR_HEX = T.colorHex;
+
+    document.body.classList.toggle('light', currentTheme === 'light');
+
+    scene.background.set(T.bg);
+    scene.fog.color.set(T.fog);
+    groundMat.color.set(T.ground);
+    ambientLight.color.set(T.ambient);
+    ambientLight.intensity = T.ambientI;
+    dirLight.color.set(T.dir);
+    dirLight.intensity = T.dirI;
+    rimLight.color.set(T.rim);
+    rimLight.intensity = T.rimI;
+
+    // Update grid colors
+    scene.remove(gridHelper); scene.remove(gridHelper2);
+    gridHelper = new THREE.GridHelper(4000, 80, T.grid1, T.grid1);
+    gridHelper.position.y = 0.1; scene.add(gridHelper);
+    gridHelper2 = new THREE.GridHelper(4000, 20, T.grid2, T.grid2);
+    gridHelper2.position.y = 0.2; scene.add(gridHelper2);
+
+    // Update block colors
+    nodeMeshes.forEach(function (mesh) {
+      var nodeId = mesh.userData.nodeId;
+      var node = nodeById[nodeId];
+      var newColor = T.colors[node.category] || 0x888888;
+      mesh.material.color.set(newColor);
+      mesh.material.emissive.set(newColor);
+      mesh.userData.baseColor = newColor;
+    });
+
+    // Update label colors
+    Object.keys(labelByNodeId).forEach(function (nodeId) {
+      var node = nodeById[nodeId];
+      var color = T.colors[node.category] || 0x888888;
+      var sprite = labelByNodeId[nodeId];
+      // Recreate label texture with new color
+      var text = node.label.replace(/[~…]/g, '');
+      if (text.length > 18) text = text.substring(0, 16) + '..';
+      var c = document.createElement('canvas');
+      c.width = 1024; c.height = 128;
+      var ctx = c.getContext('2d');
+      ctx.font = '600 44px monospace';
+      ctx.textAlign = 'center';
+      var tw = ctx.measureText(text).width;
+      var px = 20, py = 10;
+      ctx.fillStyle = currentTheme === 'light' ? 'rgba(251,250,245,0.88)' : 'rgba(10,10,10,0.75)';
+      ctx.beginPath();
+      ctx.roundRect(512 - tw/2 - px, 38 - py, tw + px*2, 56 + py*2, 8);
+      ctx.fill();
+      ctx.fillStyle = currentTheme === 'light' ? '#3A2F1C' : '#' + color.toString(16).padStart(6, '0');
+      ctx.fillText(text, 512, 80);
+      sprite.material.map.image = c;
+      sprite.material.map.needsUpdate = true;
+    });
+
+    // Update edge colors
+    var edgeMat = new THREE.LineBasicMaterial({ color: T.edge, transparent: true, opacity: 0.15 });
+    var edgeMatBright = new THREE.LineBasicMaterial({ color: T.edge, transparent: true, opacity: 0.35 });
+    edgeLines.forEach(function (line) {
+      var dist = 3; // approximate
+      line.userData.defaultMat = edgeMat;
+      line.material = edgeMat;
+    });
   });
 
   // ── Animate ──

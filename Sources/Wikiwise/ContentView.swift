@@ -487,6 +487,32 @@ struct ContentView: View {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 10) {
                     Button {
+                        // Navigate to 3D map
+                        if let c = compiler {
+                            let mapFile = c.outputDir.appendingPathComponent("map-3d.html")
+                            if FileManager.default.fileExists(atPath: mapFile.path) {
+                                if let current = selectedFileURL {
+                                    backHistory.append(current)
+                                    forwardHistory = []
+                                } else if let compiled = compiledFileURL {
+                                    backHistory.append(compiled)
+                                    forwardHistory = []
+                                }
+                                selectedFileURL = nil
+                                fileContent = ""
+                                compiledFileURL = mapFile
+                                webViewReloadToken += 1
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "map")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.toolbarText)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Open 3D Map")
+
+                    Button {
                         if publishConfig == nil {
                             showPublishConfirm = true
                         } else {
