@@ -171,6 +171,11 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .goForward)) { _ in
             goForward()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .refreshWiki)) { _ in
+            if let c = compiler {
+                recompileCurrentPage(c)
+            }
+        }
         .sheet(isPresented: $showNewWikiSheet) {
             newWikiSheet
         }
@@ -1012,23 +1017,24 @@ struct ContentView: View {
                 }
                 startBackgroundCompilation(c)
 
+            case .rebuild:
+                print("[watcher] Rebuild triggered — full recompile")
+                // Delete trigger file first so a second touch during rebuild is not lost
+                if let root = rootURL {
+                    try? FileManager.default.removeItem(at: root.appendingPathComponent(".rebuild"))
+                }
+                c.rescan()
+                c.invalidateAll()
+                if selectedFileURL != nil {
+                    recompileCurrentPage(c)
+                }
+                refreshTree()
+                startBackgroundCompilation(c)
+
             case .structure:
                 print("[watcher] Files added/deleted — rescanning")
                 c.rescan()
-                if let root = rootURL {
-                    let previousExpanded = expandedFolders
-                    tree = scanOneLevel(at: root)
-                    let newFolderURLs = Set(tree.filter { $0.isDirectory }.map { $0.url })
-                    expandedFolders = previousExpanded.intersection(newFolderURLs)
-                    for node in tree where node.isDirectory {
-                        if expandedFolders.contains(node.url) {
-                            if let kids = node.children, kids.isEmpty {
-                                expandNode(node)
-                            }
-                        }
-                    }
-                    let snapshot = tree; tree = []; tree = snapshot
-                }
+                refreshTree()
                 // Don't recompile current page on structure changes —
                 // new/deleted files don't affect the page being viewed
                 startBackgroundCompilation(c)
@@ -1036,6 +1042,23 @@ struct ContentView: View {
         }
         watcher.start()
         fileWatcher = watcher
+    }
+
+    /// Rescan the sidebar file tree, preserving which folders are expanded.
+    private func refreshTree() {
+        guard let root = rootURL else { return }
+        let previousExpanded = expandedFolders
+        tree = scanOneLevel(at: root)
+        let newFolderURLs = Set(tree.filter { $0.isDirectory }.map { $0.url })
+        expandedFolders = previousExpanded.intersection(newFolderURLs)
+        for node in tree where node.isDirectory {
+            if expandedFolders.contains(node.url) {
+                if let kids = node.children, kids.isEmpty {
+                    expandNode(node)
+                }
+            }
+        }
+        let snapshot = tree; tree = []; tree = snapshot
     }
 
     /// Force-recompile and reload the currently displayed page.

@@ -5,6 +5,7 @@ extension Notification.Name {
     static let openFolder = Notification.Name("openFolder")
     static let goBack = Notification.Name("goBack")
     static let goForward = Notification.Name("goForward")
+    static let refreshWiki = Notification.Name("refreshWiki")
 }
 
 @main
@@ -41,6 +42,13 @@ struct WikiwiseApp: App {
                     NotificationCenter.default.post(name: .goForward, object: nil)
                 }
                 .keyboardShortcut("]", modifiers: .command)
+
+                Divider()
+
+                Button("Refresh Page") {
+                    NotificationCenter.default.post(name: .refreshWiki, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: .command)
             }
         }
     }

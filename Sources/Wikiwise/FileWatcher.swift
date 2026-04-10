@@ -8,6 +8,7 @@ final class FileWatcher {
         case css                       // style.css changed
         case markdown(Set<String>)     // .md files changed (set of absolute paths)
         case structure                 // files added or deleted
+        case rebuild                   // .rebuild trigger file touched
     }
 
     private var stream: FSEventStreamRef?
@@ -18,6 +19,7 @@ final class FileWatcher {
     /// Debounce: coalesce rapid changes into a single callback per kind.
     private var pendingCSS = false
     private var pendingStructure = false
+    private var pendingRebuild = false
     private var pendingMarkdownPaths: Set<String> = []
     private var debounceWork: DispatchWorkItem?
 
@@ -83,7 +85,11 @@ final class FileWatcher {
 
             let filename = (path as NSString).lastPathComponent
 
-            if path.hasSuffix(".css") {
+            if filename == ".rebuild"
+                && path == watcher.watchedDir + "/.rebuild"
+                && (flag & kFSEventStreamEventFlagItemRemoved) == 0 {
+                watcher.pendingRebuild = true
+            } else if path.hasSuffix(".css") {
                 watcher.pendingCSS = true
             } else if path.hasSuffix(".md") {
                 let isRemoved = (flag & kFSEventStreamEventFlagItemRemoved) != 0
@@ -104,15 +110,20 @@ final class FileWatcher {
         watcher.debounceWork?.cancel()
         let hasCSS = watcher.pendingCSS
         let hasStructure = watcher.pendingStructure
+        let hasRebuild = watcher.pendingRebuild
         let mdPaths = watcher.pendingMarkdownPaths
 
         let work = DispatchWorkItem {
             watcher.pendingCSS = false
             watcher.pendingStructure = false
+            watcher.pendingRebuild = false
             watcher.pendingMarkdownPaths.removeAll()
 
-            // Structure changes are the most disruptive — handle first
-            if hasStructure {
+            // Rebuild trigger is the most disruptive — full recompile
+            if hasRebuild {
+                watcher.callback(.rebuild)
+            } else if hasStructure {
+                // Structure changes are the next most disruptive
                 watcher.callback(.structure)
             } else {
                 if hasCSS { watcher.callback(.css) }
