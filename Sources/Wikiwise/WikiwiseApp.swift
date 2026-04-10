@@ -16,7 +16,7 @@ struct WikiwiseApp: App {
         NSApplication.shared.appearance = NSAppearance(named: .aqua)
 
         // Set app icon from bundled .icns
-        if let icnsURL = Bundle.module.url(forResource: "Wikiwise", withExtension: "icns"),
+        if let icnsURL = wikiwiseBundle.url(forResource: "Wikiwise", withExtension: "icns"),
            let icon = NSImage(contentsOf: icnsURL) {
             NSApplication.shared.applicationIconImage = icon
         }

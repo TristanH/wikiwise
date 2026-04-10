@@ -35,7 +35,7 @@ enum WikiScaffold {
         }
 
         // Copy scaffold templates from the app bundle
-        guard let scaffoldDir = Bundle.module.url(forResource: "scaffold", withExtension: nil) else {
+        guard let scaffoldDir = wikiwiseBundle.url(forResource: "scaffold", withExtension: nil) else {
             throw ScaffoldError.missingResources
         }
 
@@ -102,8 +102,8 @@ enum WikiScaffold {
         try settings.write(to: url.appendingPathComponent(".claude/settings.json"), atomically: true, encoding: .utf8)
 
         // Copy build.js and style.css into site/
-        if let buildJS = Bundle.module.url(forResource: "build", withExtension: "js"),
-           let styleCSS = Bundle.module.url(forResource: "style", withExtension: "css") {
+        if let buildJS = wikiwiseBundle.url(forResource: "build", withExtension: "js"),
+           let styleCSS = wikiwiseBundle.url(forResource: "style", withExtension: "css") {
             try fm.copyItem(at: buildJS, to: url.appendingPathComponent("site/build.js"))
             try fm.copyItem(at: styleCSS, to: url.appendingPathComponent("site/style.css"))
         }
@@ -117,7 +117,7 @@ enum WikiScaffold {
             ("map-3d", "html", "site/map-3d.html"),
         ]
         for file in supportFiles {
-            if let source = Bundle.module.url(forResource: file.resource, withExtension: file.ext) {
+            if let source = wikiwiseBundle.url(forResource: file.resource, withExtension: file.ext) {
                 try fm.copyItem(at: source, to: url.appendingPathComponent(file.dest))
             }
         }

@@ -26,7 +26,7 @@ struct EditorWebView: NSViewRepresentable {
         context.coordinator.currentFileURL = fileURL
 
         // Load editor.html from the resource bundle
-        if let editorURL = Bundle.module.url(forResource: "editor", withExtension: "html") {
+        if let editorURL = wikiwiseBundle.url(forResource: "editor", withExtension: "html") {
             wv.loadFileURL(editorURL, allowingReadAccessTo: editorURL.deletingLastPathComponent())
         }
 
