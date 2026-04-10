@@ -42,8 +42,18 @@ enum PublishError: LocalizedError {
     }
 }
 
+enum SubdomainAvailability {
+    case available
+    case taken
+    case owned    // taken but by this user's token
+    case invalid
+    case checking
+    case unknown  // not yet checked
+}
+
 final class Publisher {
     static let endpoint = URL(string: "https://publish.wiki-wise.com/_publish")!
+    static let checkEndpoint = URL(string: "https://publish.wiki-wise.com/_check")!
 
     /// Load an existing publish config, or nil if the file doesn't exist.
     /// Throws if the file exists but is malformed.
@@ -58,7 +68,35 @@ final class Publisher {
         return config
     }
 
-    static func publish(siteFolder: URL, projectRoot: URL) async throws -> PublishResult {
+    /// Check whether a subdomain is available, taken, or owned by the given token.
+    static func checkAvailability(subdomain: String, token: String? = nil) async -> SubdomainAvailability {
+        var components = URLComponents(url: checkEndpoint, resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "subdomain", value: subdomain)]
+        guard let url = components.url else { return .invalid }
+
+        var request = URLRequest(url: url)
+        if let token = token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let reason = json["reason"] as? String else {
+            return .unknown
+        }
+
+        switch reason {
+        case "free": return .available
+        case "owned": return .owned
+        case "taken": return .taken
+        case "invalid": return .invalid
+        default: return .unknown
+        }
+    }
+
+    /// Publish the wiki, optionally overriding the subdomain.
+    static func publish(siteFolder: URL, projectRoot: URL, subdomain: String? = nil) async throws -> PublishResult {
         let configURL = projectRoot.appendingPathComponent("publish.json")
 
         var config: PublishConfig
@@ -66,14 +104,18 @@ final class Publisher {
 
         if let existing = try loadConfig(projectRoot: projectRoot) {
             config = existing
+            // Override subdomain if the user chose a custom one
+            if let sub = subdomain, sub != config.subdomain {
+                config.subdomain = sub
+                config.url = "https://\(sub).wiki-wise.com"
+            }
         } else {
-            let wikiName = projectRoot.lastPathComponent
+            let sub = subdomain ?? randomSubdomain(wikiName: projectRoot.lastPathComponent)
             config = PublishConfig(
-                subdomain: randomSubdomain(wikiName: wikiName),
+                subdomain: sub,
                 token: "ww_" + randomHex(32),
-                url: ""
+                url: "https://\(sub).wiki-wise.com"
             )
-            config.url = "https://\(config.subdomain).wiki-wise.com"
             isFirstPublish = true
         }
 
