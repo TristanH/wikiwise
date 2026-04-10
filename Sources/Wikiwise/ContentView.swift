@@ -523,14 +523,11 @@ struct ContentView: View {
                         if publishConfig == nil {
                             // First publish — show sheet to pick subdomain
                             showPublishConfirm = true
-                        } else if NSEvent.modifierFlags.contains(.option) {
-                            // Option-click — show sheet to change subdomain
+                        } else {
+                            // Already published — show sheet with current subdomain
                             pendingSubdomain = publishConfig?.subdomain ?? ""
                             subdomainAvailability = .owned
                             showPublishConfirm = true
-                        } else {
-                            // Normal re-publish to same subdomain
-                            performPublish()
                         }
                     } label: {
                         Group {
