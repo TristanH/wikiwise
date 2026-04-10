@@ -57,4 +57,4 @@ See [`Sources/Wikiwise/Resources/scaffold/`](Sources/Wikiwise/Resources/scaffold
 
 ## License
 
-MIT
+GPLv3 — see [LICENSE](LICENSE)
