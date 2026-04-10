@@ -7,7 +7,7 @@ A personal wiki maintained by an LLM agent, following the [llm-wiki pattern](llm
 - `llm-wiki.md` — Karpathy's pattern description (reference, read-only).
 - `raw/` — immutable source documents. Read-only for the LLM.
 - `wiki/` — LLM-maintained markdown. All edits here. Categories live in `index.md`, not in the filesystem.
-  - `home.md` — human entry point. Narrative overview, current state of thinking. Use inline SVG concept maps to visualize how ideas connect. Include images where they help tell the story.
+  - `home.md` — human entry point. Narrative overview, current state of thinking. **Always include visuals** — inline SVG concept maps showing how ideas connect, diagrams of key frameworks, or relationship graphs. The home page should feel rich and visual, not just a wall of text.
   - `index.md` — agent catalog. Flat list of every page with a one-line summary, grouped by category.
   - `log.md` — append-only chronological log.
   - `sources/` — source-summary pages (one per ingested source).
