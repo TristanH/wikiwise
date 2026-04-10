@@ -4,7 +4,7 @@ set -euo pipefail
 VERSION="${1:-0.1.0}"
 SIGNING_IDENTITY="Developer ID Application: Readwise, Inc (QV36BMA4LN)"
 APP="Wikiwise.app"
-DMG="Wikiwise-${VERSION}-macOS.dmg"
+DMG="Wikiwise-macOS.dmg"
 
 echo "=== Building Wikiwise v${VERSION} ==="
 
