@@ -8,3 +8,5 @@ DerivedData/
 xcuserdata/
 Wikiwise.app/
 Wikiwise-*.zip
+*.dmg
+.claude/worktrees/
