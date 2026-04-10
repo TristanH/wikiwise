@@ -711,6 +711,10 @@ struct ContentView: View {
         if let current = selectedFileURL, current != url {
             backHistory.append(current)
             forwardHistory = []
+        } else if selectedFileURL == nil, let compiled = compiledFileURL {
+            // Coming from a generated page (map/graph) — save it for back nav
+            backHistory.append(compiled)
+            forwardHistory = []
         }
         selectedFileURL = url
         loadFile(url)
@@ -723,18 +727,39 @@ struct ContentView: View {
         guard let previous = backHistory.popLast() else { return }
         if let current = selectedFileURL {
             forwardHistory.append(current)
+        } else if let compiled = compiledFileURL {
+            forwardHistory.append(compiled)
         }
-        selectedFileURL = previous
-        loadFile(previous)
+        // If going back to a generated page (.html), load it directly
+        if previous.pathExtension == "html" {
+            selectedFileURL = nil
+            fileContent = ""
+            compiledFileURL = previous
+            webViewReloadToken += 1
+        } else {
+            selectedFileURL = previous
+            loadFile(previous)
+            webViewReloadToken += 1
+        }
     }
 
     private func goForward() {
         guard let next = forwardHistory.popLast() else { return }
         if let current = selectedFileURL {
             backHistory.append(current)
+        } else if let compiled = compiledFileURL {
+            backHistory.append(compiled)
         }
-        selectedFileURL = next
-        loadFile(next)
+        if next.pathExtension == "html" {
+            selectedFileURL = nil
+            fileContent = ""
+            compiledFileURL = next
+            webViewReloadToken += 1
+        } else {
+            selectedFileURL = next
+            loadFile(next)
+            webViewReloadToken += 1
+        }
     }
 
     private func slug(for url: URL) -> String {

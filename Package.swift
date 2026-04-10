@@ -20,6 +20,7 @@ let package = Package(
                 .copy("Resources/app.js"),
                 .copy("Resources/graph.js"),
                 .copy("Resources/map.html"),
+                .copy("Resources/map-3d.html"),
                 .copy("Resources/codemirror-bundle.js"),
                 .copy("Resources/editor.html"),
                 .copy("Resources/scaffold"),

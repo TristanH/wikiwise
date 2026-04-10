@@ -83,7 +83,7 @@ var NAV_HTML =
   '<nav class="rail-nav"><h4>Navigate</h4><ul>' +
   '<li><a href="home.html">Home</a></li>' +
   '<li><a href="index.html">Catalog</a></li>' +
-  '<li><a href="map.html">Map</a></li>' +
+  '<li><a href="map-3d.html">Map</a></li>' +
   '<li><a href="log.html">Recent changes</a></li>' +
   '</ul></nav>';
 
@@ -467,7 +467,7 @@ function buildPreviewIndex(pages) {
     var page = pages[pageSlug];
     previews[pageSlug] = {
       title: page.title,
-      lead: (page.plainText || '').substring(0, 240),
+      lead: (page.plainText || '').substring(0, 600),
       rich: page.richText || '',
       href: pageSlug + '.html',
       type: classifyPage(pageSlug, page.hasInfobox)
@@ -486,11 +486,14 @@ function writeGraph(pages, css, outputDir) {
   var degree = {};
 
   for (var pageSlug in pages) {
+    var pt = pages[pageSlug].plainText || '';
+    var wordCount = pt ? pt.split(/\s+/).length : 0;
     nodes.push({
       id: pageSlug,
       label: pages[pageSlug].title,
       type: classifyPage(pageSlug, pages[pageSlug].hasInfobox),
-      href: pageSlug + '.html'
+      href: pageSlug + '.html',
+      words: wordCount
     });
     nodeExists[pageSlug] = true;
     degree[pageSlug] = 0;
@@ -812,7 +815,7 @@ function findMarkdownFiles(dir, outputDir) {
   for (var i = 0; i < entries.length; i++) {
     var entry = entries[i];
     var entryPath = dir + '/' + entry;
-    if (entryPath === outputDir || entry.charAt(0) === '.') continue;
+    if (entryPath === outputDir || entry.charAt(0) === '.' || entry === 'raw') continue;
     if (/\.md$/i.test(entry)) {
       results.push(entryPath);
     } else if (!/\./.test(entry)) {
@@ -983,7 +986,7 @@ var MAP_CATEGORY_MAP = {
   Meta: 'special', Source: 'source', Highlights: 'highlights'
 };
 
-var MAP_SPECIAL_SLUGS = { home: true, index: true, whoami: true, log: true };
+var MAP_SPECIAL_SLUGS = { whoami: true, log: true };
 
 function classifyForMap(pageSlug, graphType) {
   if (MAP_SPECIAL_SLUGS[pageSlug]) return 'special';
@@ -1052,7 +1055,8 @@ function assignGridPositions(graphNodes, graphLinks) {
       row: row,
       col: col,
       href: slug + '.html',
-      val: node ? (node.val || 1) : 1
+      val: node ? (node.val || 1) : 1,
+      words: node ? (node.words || 0) : 0
     });
   }
 
@@ -1178,6 +1182,21 @@ function compileMap(sourceDir, outputDir) {
       .replace('__PREVIEWS_DATA_PLACEHOLDER__', safeJsonForScript(previews))
       .replace('__GRAPH_DATA_PLACEHOLDER__', safeJsonForScript(graphData));
     writeFile(outputDir + '/map.html', mapHtml);
+  }
+
+  // Inject data into map-3d.html template
+  var map3dTemplate = (typeof bundledMap3dHTML !== 'undefined') ? bundledMap3dHTML : null;
+  if (!map3dTemplate) {
+    var map3dTemplatePath = sourceDir + '/site/map-3d.html';
+    if (fileExists(map3dTemplatePath)) {
+      map3dTemplate = readFile(map3dTemplatePath);
+    }
+  }
+  if (map3dTemplate) {
+    var map3dHtml = map3dTemplate
+      .replace('__MAP_DATA_PLACEHOLDER__', safeJsonForScript(mapData))
+      .replace('__PREVIEWS_DATA_PLACEHOLDER__', safeJsonForScript(previews));
+    writeFile(outputDir + '/map-3d.html', map3dHtml);
   }
 
   log('Map compiled: ' + cells.length + ' nodes, ' + edges.length + ' edges');

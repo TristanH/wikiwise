@@ -114,6 +114,7 @@ enum WikiScaffold {
             ("app", "js", "site/app.js"),
             ("graph", "js", "site/graph.js"),
             ("map", "html", "site/map.html"),
+            ("map-3d", "html", "site/map-3d.html"),
         ]
         for file in supportFiles {
             if let source = Bundle.module.url(forResource: file.resource, withExtension: file.ext) {

@@ -185,6 +185,18 @@ final class Compiler {
             jsContext.evaluateScript("var bundledMapHTML = `\(escaped)`;")
         }
 
+        // Load map-3d.html as a string constant — prefer user's site/ copy
+        let map3dPath = sourceDir.appendingPathComponent("site/map-3d.html").path
+        let map3dSource: String? = (try? String(contentsOfFile: map3dPath, encoding: .utf8))
+            ?? (Bundle.module.url(forResource: "map-3d", withExtension: "html").flatMap { try? String(contentsOf: $0, encoding: .utf8) })
+        if let html = map3dSource {
+            let escaped = html
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "`", with: "\\`")
+                .replacingOccurrences(of: "$", with: "\\$")
+            jsContext.evaluateScript("var bundledMap3dHTML = `\(escaped)`;")
+        }
+
         // Load build.js — prefer user's site/build.js
         let buildPath = sourceDir.appendingPathComponent("site/build.js").path
         if let src = try? String(contentsOfFile: buildPath, encoding: .utf8) {
