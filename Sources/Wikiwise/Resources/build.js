@@ -586,6 +586,7 @@ function buildGraphHtml(css, graphData) {
     '<body class="page-graph">',
     '<div class="map-nav-toggle" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:10;display:flex;border:1px solid var(--rule);border-radius:4px;overflow:hidden;background:var(--surface);font-family:var(--sans);">',
     '  <a href="map.html" style="padding:6px 14px;font-size:0.72rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-decoration:none;border:none;border-right:1px solid var(--rule);">Map</a>',
+    '  <a href="map-3d.html" style="padding:6px 14px;font-size:0.72rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-decoration:none;border:none;border-right:1px solid var(--rule);">3D</a>',
     '  <a href="graph.html" style="padding:6px 14px;font-size:0.72rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;text-decoration:none;border:none;background:var(--ink);color:var(--bg);">Classic</a>',
     '</div>',
     '<div class="graph-layout" id="graph-layout">',
