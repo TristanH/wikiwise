@@ -78,19 +78,16 @@ final class Publisher {
         }
 
         var files = try enumerateFiles(in: siteFolder)
-        // For web hosting, make home.html the default page (index.html)
-        if files.contains(where: { $0.relativePath == "home.html" }) {
-            // Rename index.html → catalog.html, then home.html → index.html
+        // For web hosting, copy home.html → index.html so the root URL serves home.
+        // Rename the original index.html (catalog) → catalog.html to avoid collision.
+        if let home = files.first(where: { $0.relativePath == "home.html" }) {
             files = files.map { entry in
-                switch entry.relativePath {
-                case "index.html":
+                if entry.relativePath == "index.html" {
                     return FileEntry(relativePath: "catalog.html", data: entry.data)
-                case "home.html":
-                    return FileEntry(relativePath: "index.html", data: entry.data)
-                default:
-                    return entry
                 }
+                return entry
             }
+            files.append(FileEntry(relativePath: "index.html", data: home.data))
         }
         let result = try await upload(config: &config, files: files, isFirstPublish: isFirstPublish)
 
