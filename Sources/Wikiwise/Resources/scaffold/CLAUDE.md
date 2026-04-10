@@ -38,6 +38,8 @@ Voice: opinionated, direct, declarative. Length: most pages under 800 words.
 
 **Ingest a new source.** Read it. Create/update the source-summary page at `wiki/sources/<slug>.md`. Propagate claims into relevant concept and entity pages. Update `index.md`. Append to `log.md`.
 
+**Keep `home.md` alive.** Update `home.md` as soon as the first few sources are ingested — don't wait until the wiki is "done." Every time new sources change the picture, revise `home.md` to reflect the current state of thinking. The home page is the wiki's front door; a stale home page makes the whole wiki feel abandoned.
+
 **Query.** Read `index.md` first. Drill into pages. If the answer is non-trivial, file it back as a new page.
 
 **Lint.** Scan for contradictions, orphans, stale claims, missing cross-links.
