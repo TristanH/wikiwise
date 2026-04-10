@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wikiwise — Build your own Wikipedia</title>
+  <meta name="description" content="Wikiwise is a native Mac app for setting up, customizing, and managing your own local-first markdown wiki with an AI agent.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,300&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #F6F1E7;
+      color: #1A1714;
+      font-family: 'Newsreader', serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* Navigation */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 80px;
+      border-bottom: 1px solid #E3D9C2;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .nav-logo-w {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 28px;
+      color: #1A1714;
+    }
+
+    .nav-logo-text {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 16px;
+      color: #1A1714;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .nav-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #5B5240;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: #1A1714;
+    }
+
+    .btn-download {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: #1A1714;
+      color: #F6F1E7;
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn-download:hover {
+      opacity: 0.85;
+    }
+
+    .btn-outline {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: transparent;
+      color: #1A1714;
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: 1px solid #D9CFB9;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .btn-outline:hover {
+      border-color: #A89A7C;
+      background: rgba(26, 23, 20, 0.03);
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 100px 80px 80px;
+    }
+
+    .hero-tags {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      color: #A89A7C;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 72px;
+      letter-spacing: -2px;
+      color: #1A1714;
+      margin-bottom: 24px;
+    }
+
+    .hero-subtitle {
+      font-family: 'Newsreader', serif;
+      font-size: 22px;
+      color: #5B5240;
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.5;
+    }
+
+    .hero-buttons {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    /* Screenshots */
+    .screenshots {
+      display: flex;
+      gap: 24px;
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 0 80px 80px;
+    }
+
+    .screenshot {
+      flex: 1;
+      border-radius: 12px;
+      border: 1px solid #D9CFB9;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(26, 23, 20, 0.06);
+    }
+
+    .screenshot img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .screenshot-light {
+      background: #F6F1E7;
+    }
+
+    .screenshot-dark {
+      background: #111A14;
+    }
+
+    /* Value props */
+    .value-props {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 48px;
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 40px 80px 80px;
+    }
+
+    .value-prop-number {
+      font-family: 'Fraunces', serif;
+      font-size: 13px;
+      color: #C2A96B;
+      margin-bottom: 12px;
+    }
+
+    .value-prop h3 {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 24px;
+      color: #1A1714;
+      margin-bottom: 12px;
+    }
+
+    .value-prop p {
+      font-family: 'Newsreader', serif;
+      font-size: 16px;
+      line-height: 170%;
+      color: #5B5240;
+    }
+
+    /* Bottom CTA */
+    .bottom-cta {
+      text-align: center;
+      padding: 60px 80px 80px;
+      border-top: 1px solid #E3D9C2;
+    }
+
+    .bottom-cta h2 {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 36px;
+      color: #1A1714;
+      margin-bottom: 16px;
+    }
+
+    .bottom-cta-subtitle {
+      font-family: 'Newsreader', serif;
+      font-size: 18px;
+      color: #5B5240;
+      max-width: 520px;
+      margin: 0 auto 36px;
+      line-height: 1.5;
+    }
+
+    .bottom-cta-subtitle a {
+      color: #5B5240;
+      text-decoration: underline;
+      text-decoration-color: #C2A96B;
+      text-underline-offset: 3px;
+      transition: color 0.2s;
+    }
+
+    .bottom-cta-subtitle a:hover {
+      color: #1A1714;
+    }
+
+    .bottom-cta-buttons {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    /* Footer */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 80px;
+      border-top: 1px solid #E3D9C2;
+    }
+
+    .footer-logo {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 14px;
+      color: #A89A7C;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #A89A7C;
+      transition: color 0.2s;
+    }
+
+    .footer-link:hover {
+      color: #5B5240;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      nav {
+        padding: 20px 32px;
+      }
+
+      .hero {
+        padding: 64px 32px 56px;
+      }
+
+      .hero h1 {
+        font-size: 48px;
+        letter-spacing: -1px;
+      }
+
+      .hero-subtitle {
+        font-size: 18px;
+      }
+
+      .screenshots {
+        flex-direction: column;
+        padding: 0 32px 56px;
+      }
+
+      .value-props {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        padding: 32px 32px 56px;
+      }
+
+      .bottom-cta {
+        padding: 48px 32px 56px;
+      }
+
+      .bottom-cta h2 {
+        font-size: 28px;
+      }
+
+      footer {
+        padding: 20px 32px;
+      }
+    }
+
+    @media (max-width: 540px) {
+      nav {
+        padding: 16px 20px;
+        gap: 12px;
+      }
+
+      .nav-links {
+        gap: 16px;
+      }
+
+      .hero {
+        padding: 48px 20px 40px;
+      }
+
+      .hero h1 {
+        font-size: 36px;
+      }
+
+      .hero-subtitle {
+        font-size: 16px;
+      }
+
+      .hero-buttons,
+      .bottom-cta-buttons {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .screenshots {
+        padding: 0 20px 40px;
+      }
+
+      .value-props {
+        padding: 24px 20px 40px;
+      }
+
+      .bottom-cta {
+        padding: 40px 20px 48px;
+      }
+
+      footer {
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <nav>
+      <a href="/" class="nav-logo">
+        <span class="nav-logo-w">W</span>
+        <span class="nav-logo-text">wikiwise</span>
+      </a>
+      <div class="nav-links">
+        <a href="#" class="nav-link">docs</a>
+        <a href="https://github.com/TristanH/wikiwise" class="nav-link">github</a>
+        <a href="https://github.com/TristanH/wikiwise/releases/latest/download/Wikiwise-macOS.dmg" class="btn-download">download</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <p class="hero-tags">open source · macos · local-first</p>
+      <h1>Build your own Wikipedia.</h1>
+      <p class="hero-subtitle">Wikiwise is a native Mac app for setting up, customizing, and managing your own local-first markdown wiki with an AI agent.</p>
+      <div class="hero-buttons">
+        <a href="https://github.com/TristanH/wikiwise/releases/latest/download/Wikiwise-macOS.dmg" class="btn-download">↓ Download for Mac</a>
+        <a href="https://github.com/TristanH/wikiwise" class="btn-outline">→ View on GitHub</a>
+      </div>
+    </section>
+
+    <section class="screenshots">
+      <div class="screenshot screenshot-light">
+        <img src="images/wiki-screenshot.png" alt="Wikiwise published wiki view showing markdown pages rendered as a clean website">
+      </div>
+      <div class="screenshot screenshot-dark">
+        <img src="images/graph-screenshot.png" alt="Wikiwise 3D knowledge graph showing interconnected wiki pages">
+      </div>
+    </section>
+
+    <section class="value-props">
+      <div class="value-prop">
+        <div class="value-prop-number">01</div>
+        <h3>Setup in seconds.</h3>
+        <p>Point it at a folder. Your markdown files become wiki pages, wikilinks connect them. No database, no config, no account.</p>
+      </div>
+      <div class="value-prop">
+        <div class="value-prop-number">02</div>
+        <h3>Infinitely customizable.</h3>
+        <p>Claude Code is built in. Write custom skills, import your Readwise highlights, ingest articles, pull from any source — your wiki, your data, your way.</p>
+      </div>
+      <div class="value-prop">
+        <div class="value-prop-number">03</div>
+        <h3>Publish in one click.</h3>
+        <p>Your wiki compiles to a clean, fast website. Share it with friends, colleagues, or the world — toggle between editing and browsing instantly.</p>
+      </div>
+    </section>
+
+    <section class="bottom-cta">
+      <h2>Open source. Your files, forever.</h2>
+      <p class="bottom-cta-subtitle">Inspired by Karpathy's <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f">llm-wiki pattern</a>. No lock-in — just markdown on your Mac.</p>
+      <div class="bottom-cta-buttons">
+        <a href="https://github.com/TristanH/wikiwise/releases/latest/download/Wikiwise-macOS.dmg" class="btn-download">↓ Download for Mac</a>
+        <a href="https://github.com/TristanH/wikiwise" class="btn-outline">→ View on GitHub</a>
+      </div>
+    </section>
+
+    <footer>
+      <span class="footer-logo">wikiwise</span>
+      <div class="footer-links">
+        <a href="https://github.com/TristanH/wikiwise" class="footer-link">github</a>
+        <a href="#" class="footer-link">docs</a>
+        <a href="https://github.com/TristanH/wikiwise/blob/main/LICENSE" class="footer-link">gplv3 license</a>
+      </div>
+    </footer>
+
+  </div>
+</body>
+</html>
