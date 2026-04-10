@@ -62,6 +62,10 @@ Show results to the user and let them pick what to import. This is the interacti
 
 **Note:** The CLI `--json` flag outputs raw JSON arrays, not objects with a `results` key. Pipe through `jq` carefully — e.g. `jq '.[].title'`, not `jq '.results[].title'`.
 
+## Step 2.5: Update home immediately
+
+Once you know what sources were found, **update `wiki/home.md` right away** — before fetching or ingesting anything. Write a brief overview of what's coming: the topics found, how many sources, what the wiki will cover. This gives the user something to read and shows progress while the import runs.
+
 ## Step 3: Fetch into raw/
 
 **Import in small batches.** Fetch and fully ingest 3-5 sources first so the user can see the wiki taking shape before importing more. A wiki with a few well-connected pages is more useful than a queue of unprocessed raws. After the first batch is ingested and the user can browse it, ask if they want to continue with more.
