@@ -10,16 +10,8 @@ struct FolderIcon: View {
     var size: CGFloat = 12
     var isSpecial: Bool = false
 
-    private var strokeColor: Color {
-        isSpecial
-            ? Color(red: 0x8A/255, green: 0x5C/255, blue: 0x30/255)         // #8A5C30
-            : Color(red: 0x9A/255, green: 0x8C/255, blue: 0x6E/255)         // #9A8C6E
-    }
-    private var fillColor: Color {
-        isSpecial
-            ? Color(red: 0x8A/255, green: 0x5C/255, blue: 0x30/255).opacity(0.3)  // #8A5C304D
-            : Color(red: 0x9A/255, green: 0x8C/255, blue: 0x6E/255).opacity(0.25) // #9A8C6E40
-    }
+    private var strokeColor: Color { isSpecial ? .folderRawStroke : .folderStroke }
+    private var fillColor: Color { (isSpecial ? Color.folderRawStroke : Color.folderStroke).opacity(isSpecial ? 0.3 : 0.25) }
 
     var body: some View {
         Canvas { context, canvasSize in
@@ -64,7 +56,7 @@ struct FolderIcon: View {
                 )
                 context.fill(
                     Path(ellipseIn: dotRect),
-                    with: .color(Color(red: 0x8A/255, green: 0x5C/255, blue: 0x30/255).opacity(0.5))
+                    with: .color(Color.folderRawStroke.opacity(0.5))
                 )
             }
         }
@@ -73,19 +65,39 @@ struct FolderIcon: View {
 }
 
 // Paper design palette — warm editorial tones from the Marginalia mockup.
+// Each color adapts to light/dark appearance via NSColor's dynamic provider.
 extension Color {
-    static let sidebarBg = Color(red: 0xF3/255, green: 0xED/255, blue: 0xDE/255)         // #F3EDDE
-    static let sidebarText = Color(red: 0x7A/255, green: 0x6E/255, blue: 0x54/255)       // #7A6E54 — file names
-    static let sidebarTextMuted = Color(red: 0xA8/255, green: 0x9A/255, blue: 0x7C/255)  // #A89A7C — disabled / hints
-    static let toolbarDisabled = Color(red: 0xD4/255, green: 0xC9/255, blue: 0xAB/255)  // #D4C9AB — disabled toolbar items
-    static let sidebarHeader = Color(red: 0x9A/255, green: 0x8C/255, blue: 0x6E/255)     // #9A8C6E — section labels
-    static let sidebarFolderName = Color(red: 0x3A/255, green: 0x2F/255, blue: 0x1C/255) // #3A2F1C — folder names
-    static let toolbarText = Color(red: 0x5B/255, green: 0x52/255, blue: 0x40/255)       // #5B5240 — toolbar items
-    static let sidebarSelectedBg = Color(red: 0xC2/255, green: 0xA9/255, blue: 0x6B/255).opacity(0.22) // #C2A96B38
-    static let sidebarSelectedText = Color(red: 0x1A/255, green: 0x17/255, blue: 0x14/255) // #1A1714
-    static let sidebarRule = Color(red: 0xD9/255, green: 0xCF/255, blue: 0xB9/255)       // #D9CFB9
-    static let contentBg = Color(red: 0xF9/255, green: 0xF6/255, blue: 0xF0/255)         // #F9F6F0 — warm but not as beige as sidebar
-    static let dividerGray = Color(red: 0xD9/255, green: 0xCF/255, blue: 0xB9/255)       // #D9CFB9
+    private static func adaptive(light: (CGFloat, CGFloat, CGFloat), dark: (CGFloat, CGFloat, CGFloat), alpha: CGFloat = 1) -> Color {
+        Color(NSColor(name: nil, dynamicProvider: { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let c = isDark ? dark : light
+            return NSColor(red: c.0/255, green: c.1/255, blue: c.2/255, alpha: alpha)
+        }))
+    }
+
+    //                                          Light           Dark
+    static let sidebarBg         = adaptive(light: (0xF3, 0xED, 0xDE), dark: (0x0E, 0x0C, 0x08))
+    static let sidebarText       = adaptive(light: (0x7A, 0x6E, 0x54), dark: (0xA8, 0x9A, 0x7C))
+    static let sidebarTextMuted  = adaptive(light: (0xA8, 0x9A, 0x7C), dark: (0x6F, 0x64, 0x50))
+    static let toolbarDisabled   = adaptive(light: (0xD4, 0xC9, 0xAB), dark: (0x3A, 0x34, 0x28))
+    static let sidebarHeader     = adaptive(light: (0x9A, 0x8C, 0x6E), dark: (0x6F, 0x64, 0x50))
+    static let sidebarFolderName = adaptive(light: (0x3A, 0x2F, 0x1C), dark: (0xA8, 0x9A, 0x7C))
+    static let toolbarText       = adaptive(light: (0x5B, 0x52, 0x40), dark: (0x8A, 0x7D, 0x62))
+    static let sidebarSelectedBg = adaptive(light: (0xC2, 0xA9, 0x6B), dark: (0xC2, 0xA9, 0x6B), alpha: 0.16)
+    static let sidebarSelectedText = adaptive(light: (0x1A, 0x17, 0x14), dark: (0xF4, 0xEA, 0xCF))
+    static let sidebarRule       = adaptive(light: (0xD9, 0xCF, 0xB9), dark: (0x2A, 0x24, 0x19))
+    static let contentBg         = adaptive(light: (0xF9, 0xF6, 0xF0), dark: (0x13, 0x11, 0x0D))
+    static let dividerGray       = adaptive(light: (0xD9, 0xCF, 0xB9), dark: (0x2A, 0x24, 0x19))
+    static let accentGold        = Color(red: 0xC2/255, green: 0xA9/255, blue: 0x6B/255)
+    static let accentPrimary     = adaptive(light: (0x7A, 0x1F, 0x1F), dark: (0xC2, 0xA9, 0x6B))
+    static let infoValue         = adaptive(light: (0x3A, 0x2F, 0x1C), dark: (0xCF, 0xC3, 0xA3))
+    static let linkedText        = adaptive(light: (0x5B, 0x52, 0x40), dark: (0x8A, 0x7D, 0x62))
+    static let folderStroke      = adaptive(light: (0x9A, 0x8C, 0x6E), dark: (0x8A, 0x7D, 0x62))
+    static let folderRawStroke   = adaptive(light: (0x8A, 0x5C, 0x30), dark: (0xA8, 0x7A, 0x50))
+    static let tabActive         = adaptive(light: (0x1A, 0x17, 0x14), dark: (0xF4, 0xEA, 0xCF))
+    static let tabInactive       = adaptive(light: (0x7A, 0x6E, 0x54), dark: (0x6F, 0x64, 0x50))
+    static let tabActiveBg       = adaptive(light: (0xF6, 0xF1, 0xE7), dark: (0x2A, 0x24, 0x19))
+    static let tabBarBg          = adaptive(light: (0xE3, 0xD9, 0xC2), dark: (0x1E, 0x1B, 0x14))
 }
 
 enum DetailMode: String, CaseIterable {
@@ -100,6 +112,7 @@ struct ContentView: View {
     }
 
     @AppStorage("lastFolderPath") private var lastFolderPath: String = ""
+    @AppStorage("appearanceMode") private var appearanceMode: String = AppearanceMode.auto.rawValue
     @State private var rootURL: URL? = nil
     @State private var tree: [FileNode] = []
     @State private var selectedFileURL: URL? = nil
@@ -245,7 +258,7 @@ struct ContentView: View {
                         .foregroundStyle(.white)
                         .frame(width: 220)
                         .padding(.vertical, 8)
-                        .background(Color(red: 0.48, green: 0.12, blue: 0.12))
+                        .background(Color.accentPrimary)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
@@ -487,7 +500,7 @@ struct ContentView: View {
                 Text(folderDisplayName)
                     .font(.system(size: 13, weight: .regular, design: .serif))
                     .italic()
-                    .foregroundStyle(Color(red: 0x5B/255, green: 0x52/255, blue: 0x40/255))
+                    .foregroundStyle(Color.toolbarText)
                     .offset(x: sidebarVisibility == .all ? -(leftSidebarWidth / 2) : 0)
             }
 
@@ -569,6 +582,19 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .help(showRightSidebar ? "Hide Right Sidebar" : "Show Right Sidebar")
+
+                    let currentMode = AppearanceMode(rawValue: appearanceMode) ?? .auto
+                    Button {
+                        let all = AppearanceMode.allCases
+                        let idx = all.firstIndex(of: currentMode) ?? 0
+                        appearanceMode = all[(idx + 1) % all.count].rawValue
+                    } label: {
+                        Image(systemName: currentMode == .dark ? "moon.fill" : currentMode == .light ? "sun.max.fill" : "circle.lefthalf.filled")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.toolbarText)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Appearance: \(currentMode.rawValue)")
                 }
             }
         }
@@ -1349,7 +1375,7 @@ struct ContentView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Color(red: 0.48, green: 0.12, blue: 0.12))
+                .tint(Color.accentPrimary)
             }
             .padding(40)
             .frame(maxWidth: 560, alignment: .leading)
@@ -1380,7 +1406,7 @@ struct ContentView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 13))
-                .foregroundStyle(Color(red: 0.48, green: 0.12, blue: 0.12))
+                .foregroundStyle(Color.accentPrimary)
                 .frame(width: 20)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)

@@ -34,6 +34,7 @@ struct EditorWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ wv: WKWebView, context: Context) {
+        wv.appearance = NSApp.effectiveAppearance
         // If the file changed, push new content to the editor
         if context.coordinator.currentFileURL != fileURL {
             context.coordinator.currentFileURL = fileURL

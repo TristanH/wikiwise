@@ -26,6 +26,33 @@
   --leading: 1.62;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #13110D;
+    --surface: #0E0C08;
+    --ink: #F4EACF;
+    --ink-soft: #E8DFC9;
+    --muted: #8A7D62;
+    --muted-2: #6F6450;
+    --rule: #2A2419;
+    --rule-soft: #1E1B14;
+    --accent: #C2A96B;
+    --accent-soft: #A89A7C;
+    --highlight: #C2A96B14;
+  }
+  .callout-note { border-left-color: #5B7FAD; }
+  .callout-note .callout-title { color: #5B7FAD; }
+  .callout-warning { border-left-color: #D08040; }
+  .callout-warning .callout-title { color: #D08040; }
+  .callout-tip { border-left-color: #4A9A70; }
+  .callout-tip .callout-title { color: #4A9A70; }
+  .op-ingest { background: #1c6a4a1a; color: #4A9A70; border-color: #2A3A30; }
+  .op-seed { background: #C2A96B1a; color: #C2A96B; border-color: #3A3420; }
+  .op-digest { background: #2c4a8a1a; color: #5B7FAD; border-color: #2A3040; }
+  .op-promote, .op-schema { background: #5a28901a; color: #9A6BC0; border-color: #302840; }
+  .op-index { background: #8a28281a; color: #C06060; border-color: #3A2828; }
+}
+
 * { box-sizing: border-box; }
 
 html {

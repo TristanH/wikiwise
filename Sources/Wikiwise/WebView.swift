@@ -26,11 +26,15 @@ struct WebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let wv = WKWebView()
         wv.navigationDelegate = context.coordinator
+        wv.setValue(false, forKey: "drawsBackground")
         return wv
     }
 
     func updateNSView(_ wv: WKWebView, context: Context) {
         context.coordinator.onNavigate = onNavigate
+        // Ensure the web view inherits the app's effective appearance
+        // so CSS prefers-color-scheme responds to the manual toggle.
+        wv.appearance = NSApp.effectiveAppearance
         if wv.url != fileURL || context.coordinator.lastReloadToken != reloadToken {
             context.coordinator.lastReloadToken = reloadToken
             wv.loadFileURL(fileURL, allowingReadAccessTo: allowingReadAccessTo)

@@ -76,17 +76,13 @@ struct RightSidebar: View {
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: .regular, design: .monospaced))
                             .tracking(0.8)
-                            .foregroundStyle(
-                                activeTab == tab
-                                    ? Color(red: 0x1A/255, green: 0x17/255, blue: 0x14/255)  // #1A1714
-                                    : Color(red: 0x7A/255, green: 0x6E/255, blue: 0x54/255)  // #7A6E54
-                            )
+                            .foregroundStyle(activeTab == tab ? Color.tabActive : Color.tabInactive)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 3)
                             .background(
                                 activeTab == tab
                                     ? RoundedRectangle(cornerRadius: 4)
-                                        .fill(Color(red: 0xF6/255, green: 0xF1/255, blue: 0xE7/255)) // #F6F1E7
+                                        .fill(Color.tabActiveBg)
                                         .shadow(color: .black.opacity(0.1), radius: 0.5, y: 0.5)
                                     : nil
                             )
@@ -97,7 +93,7 @@ struct RightSidebar: View {
             .padding(2)
             .background(
                 RoundedRectangle(cornerRadius: 5)
-                    .fill(Color(red: 0xE3/255, green: 0xD9/255, blue: 0xC2/255)) // #E3D9C2
+                    .fill(Color.tabBarBg)
             )
 
             Spacer()
@@ -129,15 +125,15 @@ struct RightSidebar: View {
                         Text(directions)
                             .font(.custom("Fraunces", size: 12))
                             .italic()
-                            .foregroundStyle(Color(red: 0x3A/255, green: 0x2F/255, blue: 0x1C/255)) // #3A2F1C
+                            .foregroundStyle(Color.infoValue)
                             .lineSpacing(3)
                             .padding(.vertical, 10)
                             .padding(.horizontal, 12)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(red: 0xC2/255, green: 0xA9/255, blue: 0x6B/255).opacity(0.12))
+                            .background(Color.accentGold.opacity(0.12))
                             .overlay(alignment: .leading) {
                                 Rectangle()
-                                    .fill(Color(red: 0xC2/255, green: 0xA9/255, blue: 0x6B/255)) // #C2A96B
+                                    .fill(Color.accentGold)
                                     .frame(width: 2)
                             }
                     }
@@ -155,7 +151,7 @@ struct RightSidebar: View {
                             ForEach(wikilinkTargets(in: file), id: \.self) { link in
                                 Text("\u{2197} \(link)")
                                     .font(.custom("Fraunces", size: 13))
-                                    .foregroundStyle(Color(red: 0x5B/255, green: 0x52/255, blue: 0x40/255)) // #5B5240
+                                    .foregroundStyle(Color.linkedText)
                             }
                         }
                     }
@@ -187,18 +183,18 @@ struct RightSidebar: View {
             .font(.custom("JetBrains Mono", size: 9))
             .tracking(1.6)
             .textCase(.uppercase)
-            .foregroundStyle(Color(red: 0xA8/255, green: 0x9A/255, blue: 0x7C/255)) // #A89A7C
+            .foregroundStyle(Color.sidebarHeader)
     }
 
     private func infoRow(_ label: String, value: String) -> some View {
         HStack {
             Text(label)
                 .font(.custom("JetBrains Mono", size: 10))
-                .foregroundStyle(Color(red: 0xA8/255, green: 0x9A/255, blue: 0x7C/255)) // #A89A7C
+                .foregroundStyle(Color.sidebarHeader)
             Spacer()
             Text(value)
                 .font(.custom("Fraunces", size: 12))
-                .foregroundStyle(Color(red: 0x3A/255, green: 0x2F/255, blue: 0x1C/255)) // #3A2F1C
+                .foregroundStyle(Color.infoValue)
         }
     }
 
