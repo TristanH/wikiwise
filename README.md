@@ -53,6 +53,8 @@ my-wiki/
   llm-wiki.md     # Karpathy's pattern (reference)
 ```
 
+See [`Sources/Wikiwise/Resources/scaffold/`](Sources/Wikiwise/Resources/scaffold/) for the full template — this is what gets copied when you create a new wiki, including the schema (`CLAUDE.md`), agent skills, and seed pages.
+
 ## License
 
 MIT
