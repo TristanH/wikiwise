@@ -6,8 +6,6 @@ A native macOS wiki reader — SwiftUI app with sidebar file browser and rendere
 
 - Build: `swift build`
 - Run: `.build/arm64-apple-macosx/debug/Wikiwise`
-- Screenshots: use `screencapture -x -D 2` (user's primary display is display 2, the external monitor)
-- **Visual verification required:** After any change that affects display or could break the app, build it, open it on display 2, screenshot it, and click around to confirm the change works visually. Don't trust code alone — verify on screen.
 
 ## Architecture
 
