@@ -413,7 +413,7 @@ struct ContentView: View {
     private var navSplitContent: some View {
         NavigationSplitView(columnVisibility: $sidebarVisibility) {
             sidebar
-                .navigationSplitViewColumnWidth(min: 110, ideal: 260, max: 360)
+                .navigationSplitViewColumnWidth(min: 110, ideal: 200, max: 360)
                 .overlay(alignment: .top) {
                     Rectangle().fill(Color.dividerGray).frame(height: 1)
                 }

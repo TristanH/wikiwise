@@ -48,7 +48,7 @@ struct WikiwiseApp: App {
                 }
         }
         .windowStyle(.titleBar)
-        .defaultSize(width: 1000, height: 700)
+        .defaultSize(width: 1330, height: 930)
         .commands {
             CommandGroup(after: .newItem) {
                 Divider()
