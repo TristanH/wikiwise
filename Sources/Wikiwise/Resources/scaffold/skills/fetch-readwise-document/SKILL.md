@@ -102,11 +102,36 @@ Hold off on `ingest` until all fetches are done, then ingest the batch using par
 
 When a user saves a tweet that is a reply, Reader stores the **parent thread** as the document. The `source_url` (from list-documents) points at the actually-saved tweet. The `image_url` is the parent author's avatar. Surface this to the user when fetching tweet replies.
 
+## CLI flag reference (don't guess these)
+
+The Readwise CLI uses `--document-id`, NOT `--id`. Here are the exact flags:
+
+```bash
+# Get document details — use --document-id (NOT --id)
+readwise reader-get-document-details --document-id <DOC_ID> --json
+
+# List documents — use --id to filter by doc ID
+readwise reader-list-documents --id <DOC_ID> --json
+
+# Search documents
+readwise reader-search-documents --query "<text>" --json
+readwise reader-search-documents --query "<text>" --title-search "<title>" --json
+
+# Search highlights
+readwise readwise-search-highlights --vector-search-term "<text>" --limit 30 --json
+```
+
+**Common mistakes to avoid:**
+- `reader-get-document-details --id` → WRONG, use `--document-id`
+- `reader-list-documents --document-id` → WRONG, use `--id`
+- Running `--help` to discover flags → DON'T, use this reference
+
 ## Rules
 
 - **Never** run `reader-get-document-details` without `| jq -r '.content' > <file>`. No exceptions.
 - **Never** `Read` or `cat` a `raw/` file you just wrote unless the user explicitly asks.
 - **Never** probe JSON shapes with `jq 'keys'`.
+- **Never** run `--help` to discover CLI flags — use the reference above.
 - **Prefer `--title-search`** over `--query` when the user names a specific title.
 - If metadata is missing fields, use `null` or `unknown` — do not fetch the body to find them.
 - Confirm with the user before overwriting an existing `raw/` file.

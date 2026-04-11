@@ -62,6 +62,8 @@ Show results to the user and let them pick what to import. This is the interacti
 
 **Note:** The CLI `--json` flag outputs raw JSON arrays, not objects with a `results` key. Pipe through `jq` carefully — e.g. `jq '.[].title'`, not `jq '.results[].title'`.
 
+**CLI flag gotcha:** `reader-get-document-details` uses `--document-id` (NOT `--id`). See `fetch-readwise-document` skill for the full flag reference.
+
 ## Step 2.5: Update home immediately
 
 Once you know what sources were found, **update `wiki/home.md` right away** — before fetching or ingesting anything. Write a brief overview of what's coming: the topics found, how many sources, what the wiki will cover. This gives the user something to read and shows progress while the import runs.
