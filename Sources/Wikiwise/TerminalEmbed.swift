@@ -20,21 +20,44 @@ class TerminalSession: ObservableObject {
         let tv = terminalView
         tv.autoresizingMask = [.width, .height]
 
-        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-
-        tv.nativeBackgroundColor = isDark
-            ? NSColor(red: 0x0E/255, green: 0x0C/255, blue: 0x08/255, alpha: 1)   // #0E0C08
-            : NSColor(red: 0xF3/255, green: 0xED/255, blue: 0xDE/255, alpha: 1)   // #F3EDDE
-        tv.nativeForegroundColor = isDark
-            ? NSColor(red: 0xCF/255, green: 0xC3/255, blue: 0xA3/255, alpha: 1)   // #CFC3A3
-            : NSColor(red: 0x5B/255, green: 0x52/255, blue: 0x40/255, alpha: 1)   // #5B5240
-
         // JetBrains Mono if available, otherwise system monospaced
         if let jb = NSFont(name: "JetBrains Mono", size: 12) {
             tv.font = jb
         } else {
             tv.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         }
+
+        applyColors()
+
+        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        let cwd = workingDirectory?.path ?? FileManager.default.homeDirectoryForCurrentUser.path
+
+        tv.startProcess(
+            executable: shell,
+            args: [],
+            environment: nil,
+            execName: "-\((shell as NSString).lastPathComponent)",
+            currentDirectory: cwd
+        )
+    }
+
+    /// Reapply terminal colors to match the current appearance. Called on mode toggle.
+    func updateAppearance() {
+        guard isStarted else { return }
+        applyColors()
+        terminalView.needsDisplay = true
+    }
+
+    private func applyColors() {
+        let tv = terminalView
+        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+
+        tv.nativeBackgroundColor = isDark
+            ? NSColor(red: 0x0E/255, green: 0x0C/255, blue: 0x08/255, alpha: 1)
+            : NSColor(red: 0xF3/255, green: 0xED/255, blue: 0xDE/255, alpha: 1)
+        tv.nativeForegroundColor = isDark
+            ? NSColor(red: 0xCF/255, green: 0xC3/255, blue: 0xA3/255, alpha: 1)
+            : NSColor(red: 0x5B/255, green: 0x52/255, blue: 0x40/255, alpha: 1)
 
         // Remap ANSI colors to warm editorial palette.
         // SwiftTerm.Color uses UInt16 (0-65535). Convert 8-bit: val * 257.
@@ -74,17 +97,6 @@ class TerminalSession: ObservableObject {
             SwiftTerm.Color(red: 0xF3 * 257, green: 0xED * 257, blue: 0xDE * 257),  // 15 bright white — cream
         ]
         tv.installColors(warmColors)
-
-        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
-        let cwd = workingDirectory?.path ?? FileManager.default.homeDirectoryForCurrentUser.path
-
-        tv.startProcess(
-            executable: shell,
-            args: [],
-            environment: nil,
-            execName: "-\((shell as NSString).lastPathComponent)",
-            currentDirectory: cwd
-        )
     }
 }
 

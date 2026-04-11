@@ -28,7 +28,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #13110D;
+    --bg: #1E1B14;
     --surface: #0E0C08;
     --ink: #F4EACF;
     --ink-soft: #E8DFC9;
@@ -51,6 +51,9 @@
   .op-digest { background: #2c4a8a1a; color: #5B7FAD; border-color: #2A3040; }
   .op-promote, .op-schema { background: #5a28901a; color: #9A6BC0; border-color: #302840; }
   .op-index { background: #8a28281a; color: #C06060; border-color: #3A2828; }
+  .article-body code { color: #C2A96B; background: #2A241980; }
+  .article-body pre { background: #2A241980; border-color: #3A3420; }
+  .article-body pre code { color: #E8DFC9; }
 }
 
 * { box-sizing: border-box; }

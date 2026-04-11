@@ -86,7 +86,7 @@ extension Color {
     static let sidebarSelectedBg = adaptive(light: (0xC2, 0xA9, 0x6B), dark: (0xC2, 0xA9, 0x6B), alpha: 0.16)
     static let sidebarSelectedText = adaptive(light: (0x1A, 0x17, 0x14), dark: (0xF4, 0xEA, 0xCF))
     static let sidebarRule       = adaptive(light: (0xD9, 0xCF, 0xB9), dark: (0x2A, 0x24, 0x19))
-    static let contentBg         = adaptive(light: (0xF9, 0xF6, 0xF0), dark: (0x13, 0x11, 0x0D))
+    static let contentBg         = adaptive(light: (0xF9, 0xF6, 0xF0), dark: (0x1E, 0x1B, 0x14))
     static let dividerGray       = adaptive(light: (0xD9, 0xCF, 0xB9), dark: (0x2A, 0x24, 0x19))
     static let accentGold        = Color(red: 0xC2/255, green: 0xA9/255, blue: 0x6B/255)
     static let accentPrimary     = adaptive(light: (0x7A, 0x1F, 0x1F), dark: (0xC2, 0xA9, 0x6B))
@@ -190,6 +190,13 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .refreshWiki)) { _ in
             if let c = compiler {
                 recompileCurrentPage(c)
+            }
+        }
+        .onChange(of: appearanceMode) { _, _ in
+            // Force webview reload so CSS prefers-color-scheme picks up the new appearance
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                webViewReloadToken += 1
+                terminalSession.updateAppearance()
             }
         }
         .sheet(isPresented: $showNewWikiSheet) {
@@ -410,6 +417,9 @@ struct ContentView: View {
                 .overlay(alignment: .top) {
                     Rectangle().fill(Color.dividerGray).frame(height: 1)
                 }
+                .overlay(alignment: .trailing) {
+                    Rectangle().fill(Color.dividerGray).frame(width: 1)
+                }
                 .background(GeometryReader { geo in
                     Color.clear.onAppear { leftSidebarWidth = geo.size.width }
                         .onChange(of: geo.size.width) { _, w in leftSidebarWidth = w }
@@ -507,6 +517,19 @@ struct ContentView: View {
 
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 10) {
+                    let currentMode = AppearanceMode(rawValue: appearanceMode) ?? .auto
+                    Button {
+                        let all = AppearanceMode.allCases
+                        let idx = all.firstIndex(of: currentMode) ?? 0
+                        appearanceMode = all[(idx + 1) % all.count].rawValue
+                    } label: {
+                        Image(systemName: currentMode == .dark ? "moon.fill" : currentMode == .light ? "sun.max.fill" : "circle.lefthalf.filled")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.toolbarText)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Appearance: \(currentMode.rawValue)")
+
                     Button {
                         // Navigate to 3D map
                         if let c = compiler {
@@ -583,19 +606,6 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .help(showRightSidebar ? "Hide Right Sidebar" : "Show Right Sidebar")
-
-                    let currentMode = AppearanceMode(rawValue: appearanceMode) ?? .auto
-                    Button {
-                        let all = AppearanceMode.allCases
-                        let idx = all.firstIndex(of: currentMode) ?? 0
-                        appearanceMode = all[(idx + 1) % all.count].rawValue
-                    } label: {
-                        Image(systemName: currentMode == .dark ? "moon.fill" : currentMode == .light ? "sun.max.fill" : "circle.lefthalf.filled")
-                            .font(.system(size: 13))
-                            .foregroundStyle(Color.toolbarText)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Appearance: \(currentMode.rawValue)")
                 }
             }
         }
