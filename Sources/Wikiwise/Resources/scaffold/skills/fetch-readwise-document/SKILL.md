@@ -90,7 +90,7 @@ done
 wc -l raw/*.md
 ```
 
-Hold off on `ingest` until all fetches are done, then ingest the batch.
+Hold off on `ingest` until all fetches are done, then ingest the batch using parallel subagents (see import-readwise skill Step 4).
 
 ## JSON shapes (don't re-probe these)
 

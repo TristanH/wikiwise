@@ -1,7 +1,7 @@
 ---
 name: import-readwise
 description: Import highlights and documents from Readwise into the wiki using the Readwise CLI (not MCP). Searches and browses interactively, then delegates to fetch-readwise-document and fetch-readwise-highlights for streaming large content to disk.
-allowed-tools: Bash(*) Read Write Edit Glob Grep
+allowed-tools: Bash(*) Read Write Edit Glob Grep Agent
 ---
 
 # Import from Readwise
@@ -79,12 +79,44 @@ Both skills chain into `ingest` automatically to create wiki pages from the raws
 
 **Important:** All files in `raw/` must be markdown (`.md`), never JSON. Temp JSON files from CLI queries go in `/tmp/`, not `raw/`. If you need to store structured data from Readwise, convert it to a readable markdown document before saving to `raw/`.
 
-## Step 4: Update wiki infrastructure
+## Step 4: Parallel ingest with subagents
 
-After ingest completes:
+**This is the most important performance step.** After fetching raw files, do NOT ingest them one at a time. Use the `Agent` tool to parallelize:
 
-1. Verify `wiki/index.md` includes all new pages.
-2. Verify `wiki/home.md` reflects what was imported (if significant).
-3. Verify `wiki/log.md` has a timestamped entry.
+1. **Read the current wiki state yourself first** — read `wiki/index.md` and `wiki/home.md` to understand what exists.
+2. **Dispatch one subagent per source** (or per 2-3 related sources) using the `Agent` tool. Launch them all in a single message so they run concurrently. Each subagent brief should include:
+   - The path to the raw file(s) to ingest
+   - The current wiki index (so it knows what pages exist)
+   - The CLAUDE.md schema reference
+   - Instructions to: read the raw, create source-summary page, create/update concept pages, cross-link aggressively, update index.md and log.md
+3. **After all subagents complete**, do a single pass yourself to:
+   - Deduplicate any index.md entries (multiple agents may have added overlapping entries)
+   - Update `wiki/home.md` with the full picture
+   - Check for cross-linking gaps between the new pages
+
+**Example dispatch pattern:**
+
+```
+Agent({
+  prompt: "Ingest raw/source-a.md into this wiki. Schema is in CLAUDE.md. Current index: [paste index]. Create source-summary at wiki/sources/, propagate claims to concept pages, cross-link from 2-3 existing pages, update index.md and log.md.",
+  description: "Ingest source-a"
+})
+Agent({
+  prompt: "Ingest raw/source-b.md into this wiki. Schema is in CLAUDE.md. Current index: [paste index]. Create source-summary at wiki/sources/, propagate claims to concept pages, cross-link from 2-3 existing pages, update index.md and log.md.",
+  description: "Ingest source-b"
+})
+// ... all in the same message for parallel execution
+```
+
+**Why this matters:** Serial ingestion of 5 sources takes 5x as long. Parallel subagents cut wall-clock time dramatically. The dedup pass at the end is cheap.
+
+## Step 5: Update wiki infrastructure
+
+After all subagents complete:
+
+1. Deduplicate `wiki/index.md` entries (multiple subagents may have added the same pages).
+2. Update `wiki/home.md` to reflect everything that was imported.
+3. Verify `wiki/log.md` has timestamped entries.
+4. Scan for cross-linking gaps — pages created by different subagents may not link to each other yet.
 
 Report what was imported and what pages were created.
