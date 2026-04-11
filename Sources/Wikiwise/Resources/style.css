@@ -53,7 +53,7 @@
   .op-index { background: #8a28281a; color: #C06060; border-color: #3A2828; }
   .article-body code { color: #C2A96B; background: #2A241980; }
   .article-body pre { background: #2A241980; border-color: #3A3420; }
-  .article-body pre code { color: #E8DFC9; }
+  .article-body pre code { color: #C2A96B; }
 }
 
 * { box-sizing: border-box; }
