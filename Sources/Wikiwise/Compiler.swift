@@ -134,7 +134,10 @@ final class Compiler {
                 if fm.fileExists(atPath: dst) { try fm.removeItem(atPath: dst) }
                 try fm.copyItem(atPath: src, toPath: dst)
                 return true
-            } catch { return false }
+            } catch {
+                print("[compiler] copyFile failed: \(src) → \(dst): \(error)")
+                return false
+            }
         }
         jsContext.setObject(copyFile, forKeyedSubscript: "copyFile" as NSString)
 

@@ -132,6 +132,9 @@ struct ContentView: View {
     @State private var backgroundTimer: Timer? = nil
     @State private var fileWatcher: FileWatcher? = nil
     @State private var webViewReloadToken: Int = 0
+    @State private var scrollFraction: Double = 0
+    /// Holds a weak ref to the active WKWebView so we can query scroll position.
+    @StateObject private var activeWebView = WebViewHolder()
     @State private var rightSidebarTab: RightSidebarTab = .terminal
     @State private var showRightSidebar: Bool = true
     @State private var showLeftSidebar: Bool = true
@@ -460,7 +463,7 @@ struct ContentView: View {
                             bottomTrailingRadius: 3, topTrailingRadius: 3
                         )
 
-                        Button { detailMode = .raw } label: {
+                        Button { captureScrollAndSwitch(to: .raw) } label: {
                             Text("FILE")
                                 .font(.system(size: 10, weight: .regular, design: .monospaced))
                                 .tracking(0.8)
@@ -472,7 +475,7 @@ struct ContentView: View {
                         }
                         .buttonStyle(.plain)
 
-                        Button { detailMode = .compiled } label: {
+                        Button { captureScrollAndSwitch(to: .compiled) } label: {
                             Text("WIKI")
                                 .font(.system(size: 10, weight: .regular, design: .monospaced))
                                 .tracking(0.8)
@@ -753,12 +756,12 @@ struct ContentView: View {
             .background(Color.contentBg)
         } else if let url = selectedFileURL, url.pathExtension.lowercased() != "md" {
             // Non-markdown files (CSS, JS, JSON) always use the code editor
-            EditorWebView(fileURL: url, fileContent: $fileContent)
+            EditorWebView(fileURL: url, fileContent: $fileContent, scrollFraction: .constant(0))
         } else {
             switch detailMode {
             case .raw:
                 if let url = selectedFileURL {
-                    EditorWebView(fileURL: url, fileContent: $fileContent)
+                    EditorWebView(fileURL: url, fileContent: $fileContent, scrollFraction: $scrollFraction, holder: activeWebView)
                 }
             case .compiled:
                 if let url = compiledFileURL, let c = compiler {
@@ -768,12 +771,27 @@ struct ContentView: View {
                         onNavigate: { htmlURL in
                             handleWikilink(htmlURL)
                         },
-                        reloadToken: webViewReloadToken
+                        reloadToken: webViewReloadToken,
+                        scrollFraction: $scrollFraction,
+                        holder: activeWebView
                     )
                 } else if let url = selectedFileURL {
                     // No compiled HTML (e.g. raw/ files) — show editor instead
-                    EditorWebView(fileURL: url, fileContent: $fileContent)
+                    EditorWebView(fileURL: url, fileContent: $fileContent, scrollFraction: .constant(0))
                 }
+            }
+        }
+    }
+
+    // MARK: - Scroll preservation
+
+    /// Capture scroll position from the active webview, then switch detail mode.
+    private func captureScrollAndSwitch(to mode: DetailMode) {
+        let isEditor = detailMode == .raw
+        activeWebView.captureScrollFraction(isEditor: isEditor) { fraction in
+            DispatchQueue.main.async {
+                scrollFraction = fraction
+                detailMode = mode
             }
         }
     }
@@ -789,6 +807,7 @@ struct ContentView: View {
             backHistory.append(compiled)
             forwardHistory = []
         }
+        scrollFraction = 0  // Reset scroll for new page
         selectedFileURL = url
         loadFile(url)
         // Force WebView to load the new page (critical when navigating

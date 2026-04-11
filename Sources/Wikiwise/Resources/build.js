@@ -340,19 +340,36 @@ function compileNextBatch(batchSize) {
   return _progressive.pending.length;
 }
 
-// Copy wiki/assets/ → site/out/assets/ (binary-safe via copyFile bridge)
+// Copy wiki/assets/ → site/out/assets/ (binary-safe via copyFile bridge).
+// Recurses into subdirectories; skips files whose mtime hasn't changed.
 function copyAssets(sourceDir, outputDir) {
   if (typeof copyFile === 'undefined') return;
   var assetsDir = sourceDir + '/wiki/assets';
   if (!fileExists(assetsDir)) return;
-  var files = listDir(assetsDir);
-  if (!files.length) return;
   var outAssets = outputDir + '/assets';
-  mkdirp(outAssets);
   var copied = 0;
-  for (var i = 0; i < files.length; i++) {
-    if (copyFile(assetsDir + '/' + files[i], outAssets + '/' + files[i])) copied++;
+
+  function copyDir(srcDir, dstDir) {
+    var entries = listDir(srcDir);
+    for (var i = 0; i < entries.length; i++) {
+      var src = srcDir + '/' + entries[i];
+      var dst = dstDir + '/' + entries[i];
+      // Recurse into subdirectories (listDir returns non-empty for dirs)
+      var children = listDir(src);
+      if (children.length > 0) {
+        copyDir(src, dst);
+        continue;
+      }
+      // Skip if destination is up to date
+      var srcMtime = fileMtime(src);
+      var dstMtime = fileMtime(dst);
+      if (dstMtime >= srcMtime && srcMtime > 0) continue;
+      mkdirp(dstDir);
+      if (copyFile(src, dst)) copied++;
+    }
   }
+
+  copyDir(assetsDir, outAssets);
   if (copied) log('Copied ' + copied + ' asset(s) to ' + outAssets);
 }
 
