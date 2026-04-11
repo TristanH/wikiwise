@@ -65,8 +65,10 @@ These are abbreviated versions. Read the full skill files for details.
 1. Save raw source to `raw/<slug>.md`
 2. Create source-summary page at `wiki/sources/<slug>.md` with frontmatter (`type`, `date`, `author`, `url`, `raw`)
 3. Propagate claims into concept/entity pages with citations `([[slug]])`
-4. Update `wiki/index.md` — add new pages with one-line summaries
-5. Append to `wiki/log.md` — `## [YYYY-MM-DD HH:MM] ingest | <title>`
+4. **Cross-link aggressively** — add `[[wikilinks]]` FROM existing pages TO new pages (edit 2-3 related pages), and FROM new pages TO existing ones. No orphans.
+5. Update `wiki/index.md` — add new pages with one-line summaries
+6. Update `wiki/home.md` if the source changes the narrative
+7. Append to `wiki/log.md` — `## [YYYY-MM-DD HH:MM] ingest | <title>`
 
 **Lint the wiki:**
 1. Scan `wiki/` for contradictions, orphan pages, broken `[[wikilinks]]`, stale claims, missing cross-links

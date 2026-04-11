@@ -63,11 +63,13 @@ If using subagents, launch one with this brief (adapt per run). Otherwise, follo
 >
 > 1. **Read the source summary and its raw.** Once, carefully.
 >
-> 2. **Propagate.** Make surgical edits (not rewrites) to existing pages the source materially informs. Rules:
+> 2. **Propagate and cross-link.** Make surgical edits (not rewrites) to existing pages the source materially informs. Rules:
 >    - Add to existing paragraphs/sections where the new material belongs; don't create duplicate sections.
 >    - Cite the source: `([[<slug>]])`.
 >    - If the source contradicts an existing claim, add a `> [!contradiction]` callout inline.
 >    - If a claim has a canonical home elsewhere, link rather than duplicate.
+>    - **Add backlinks:** when you update an existing page to reference a new concept, also edit the new concept page to link back. Every connection should be bidirectional.
+>    - **No orphans:** after propagation, every source-summary and every concept page must have at least 2 inbound `[[wikilinks]]` from other pages. If a page has zero inbound links, find related pages and add references to them.
 >
 > 3. **Create new pages** *only* when the material genuinely warrants one — a new entity, concept, open question, or strategic position — not for every tangent. Lean conservative.
 >

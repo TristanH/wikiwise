@@ -48,9 +48,20 @@ This forces a full recompile of every page and refreshes the current view. The a
 
 **What the user sees:** `.claude/active-file` contains the relative path of the page currently open in the app. Read it to know what the user is looking at.
 
+## Integration — the #1 rule
+
+**Every page must be woven into the wiki graph.** A page with no inbound links is invisible. A page with no outbound links is a dead end. Both are failures. When you create or update any page:
+
+1. **Link IN** — find 2-3 existing pages that should reference the new page and add `[[wikilinks]]` to them. Read `index.md` to find related pages, then edit them.
+2. **Link OUT** — the new page itself should link to every related concept/entity/source already in the wiki.
+3. **Update `home.md`** — if the new material changes the big picture, revise `home.md`. Don't wait.
+4. **Update `index.md`** — every page must appear here with a one-line summary.
+
+**The test:** after any operation, a reader starting from `home.md` should be able to reach the new content within 2 clicks. If they can't, you haven't integrated it.
+
 ## Workflows
 
-**Ingest a new source.** Read it. Create/update the source-summary page at `wiki/sources/<slug>.md`. Propagate claims into relevant concept and entity pages. Update `index.md`. Append to `log.md`.
+**Ingest a new source.** Read it. Create/update the source-summary page at `wiki/sources/<slug>.md`. Then do the hard part: propagate claims into existing concept/entity pages — and add backlinks FROM those pages TO the new source and any new concept pages. Don't just create pages; stitch them into the web. Update `index.md`. Append to `log.md`. Update `home.md` if the new source shifts the narrative.
 
 **Keep `home.md` alive.** Update `home.md` as soon as the first few sources are ingested — don't wait until the wiki is "done." Every time new sources change the picture, revise `home.md` to reflect the current state of thinking. The home page is the wiki's front door; a stale home page makes the whole wiki feel abandoned.
 
