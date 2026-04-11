@@ -27,5 +27,21 @@
 <body>
 <div id="editor"></div>
 <script src="codemirror-bundle.js"></script>
+<script>
+// Scroll fraction helpers for preserving position across view switches.
+// CodeMirror scrolls inside .cm-scroller, not the window.
+function __getScrollFraction() {
+  var s = document.querySelector('.cm-scroller');
+  if (!s) return 0;
+  var max = s.scrollHeight - s.clientHeight;
+  return max > 0 ? s.scrollTop / max : 0;
+}
+function __scrollToFraction(f) {
+  var s = document.querySelector('.cm-scroller');
+  if (!s) return;
+  var max = s.scrollHeight - s.clientHeight;
+  s.scrollTop = f * max;
+}
+</script>
 </body>
 </html>

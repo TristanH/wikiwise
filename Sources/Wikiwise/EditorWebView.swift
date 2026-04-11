@@ -7,6 +7,10 @@ import WebKit
 struct EditorWebView: NSViewRepresentable {
     let fileURL: URL
     @Binding var fileContent: String
+    /// Shared scroll fraction (0–1) for preserving position across view switches.
+    @Binding var scrollFraction: Double
+    /// Shared holder so ContentView can query scroll.
+    var holder: WebViewHolder? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -22,8 +26,10 @@ struct EditorWebView: NSViewRepresentable {
         let wv = WKWebView(frame: .zero, configuration: config)
         wv.setValue(false, forKey: "drawsBackground")
         context.coordinator.webView = wv
+        holder?.webView = wv
         context.coordinator.pendingContent = fileContent
         context.coordinator.currentFileURL = fileURL
+        context.coordinator.pendingScrollFraction = scrollFraction
 
         // Load editor.html from the resource bundle
         if let editorURL = wikiwiseBundle.url(forResource: "editor", withExtension: "html") {
@@ -39,6 +45,7 @@ struct EditorWebView: NSViewRepresentable {
         if context.coordinator.currentFileURL != fileURL {
             context.coordinator.currentFileURL = fileURL
             context.coordinator.pendingContent = fileContent
+            context.coordinator.pendingScrollFraction = scrollFraction
             if context.coordinator.isReady {
                 context.coordinator.pushContent(fileContent)
             }
@@ -51,6 +58,7 @@ struct EditorWebView: NSViewRepresentable {
         var isReady = false
         var pendingContent: String?
         var currentFileURL: URL?
+        var pendingScrollFraction: Double = 0
 
         init(_ parent: EditorWebView) {
             self.parent = parent
@@ -88,10 +96,25 @@ struct EditorWebView: NSViewRepresentable {
                 .replacingOccurrences(of: "'", with: "\\'")
                 .replacingOccurrences(of: "\n", with: "\\n")
                 .replacingOccurrences(of: "\r", with: "\\r")
-            webView?.evaluateJavaScript("setContent('\(escaped)')") { _, error in
+            let fraction = pendingScrollFraction
+            // Set content, then restore scroll position after a brief layout delay
+            webView?.evaluateJavaScript("setContent('\(escaped)')") { [weak self] _, error in
                 if let error = error {
                     print("[editor] Error setting content: \(error)")
+                    return
                 }
+                if fraction > 0.01 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        self?.webView?.evaluateJavaScript("__scrollToFraction(\(fraction))")
+                    }
+                }
+            }
+        }
+
+        /// Capture current scroll fraction from CodeMirror.
+        func captureScroll(completion: @escaping (Double) -> Void) {
+            webView?.evaluateJavaScript("__getScrollFraction()") { result, _ in
+                completion((result as? Double) ?? 0)
             }
         }
     }
