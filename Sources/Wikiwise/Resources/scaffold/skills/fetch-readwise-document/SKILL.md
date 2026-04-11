@@ -124,14 +124,13 @@ readwise readwise-search-highlights --vector-search-term "<text>" --limit 30 --j
 **Common mistakes to avoid:**
 - `reader-get-document-details --id` → WRONG, use `--document-id`
 - `reader-list-documents --document-id` → WRONG, use `--id`
-- Running `--help` to discover flags → DON'T, use this reference
 
 ## Rules
 
 - **Never** run `reader-get-document-details` without `| jq -r '.content' > <file>`. No exceptions.
 - **Never** `Read` or `cat` a `raw/` file you just wrote unless the user explicitly asks.
 - **Never** probe JSON shapes with `jq 'keys'`.
-- **Never** run `--help` to discover CLI flags — use the reference above.
+- **Prefer the flag reference above** over `--help` — but `--help` is fine as a fallback.
 - **Prefer `--title-search`** over `--query` when the user names a specific title.
 - If metadata is missing fields, use `null` or `unknown` — do not fetch the body to find them.
 - Confirm with the user before overwriting an existing `raw/` file.
