@@ -305,54 +305,67 @@
       color: #5B5240;
     }
 
-    /* Dark mode */
-    @media (prefers-color-scheme: dark) {
-      body {
+    /* Dark mode (toggled via .dark class on body) */
+    body.dark {
         background: #1E1B14;
         color: #F4EACF;
       }
 
-      nav { border-bottom-color: #3A3428; }
-      .nav-logo-w, .nav-logo-text { color: #F4EACF; }
-      .nav-link { color: #8A7D62; }
-      .nav-link:hover { color: #F4EACF; }
+    body.dark nav { border-bottom-color: #3A3428; }
+    body.dark .nav-logo-w, body.dark .nav-logo-text { color: #F4EACF; }
+    body.dark .nav-link { color: #8A7D62; }
+    body.dark .nav-link:hover { color: #F4EACF; }
 
-      .btn-download {
-        background: #C2A96B;
-        color: #1A1714;
-      }
-
-      .btn-outline {
-        color: #F4EACF;
-        border-color: #3A3428;
-      }
-      .btn-outline:hover {
-        border-color: #8A7D62;
-        background: rgba(244, 234, 207, 0.04);
-      }
-
-      .hero-tags { color: #8A7D62; }
-      .hero h1 { color: #F4EACF; }
-      .hero-subtitle { color: #8A7D62; }
-
-      .screenshot { border-color: #3A3428; box-shadow: 0 4px 24px rgba(0,0,0,0.2); }
-      .screenshot-light { background: #1E1B14; }
-      .screenshot-dark { background: #0E0C08; }
-
-      .value-prop h3 { color: #F4EACF; }
-      .value-prop p { color: #8A7D62; }
-
-      .bottom-cta { border-top-color: #3A3428; }
-      .bottom-cta h2 { color: #F4EACF; }
-      .bottom-cta-subtitle { color: #8A7D62; }
-      .bottom-cta-subtitle a { color: #A89A7C; text-decoration-color: #C2A96B; }
-      .bottom-cta-subtitle a:hover { color: #F4EACF; }
-
-      footer { border-top-color: #3A3428; }
-      .footer-logo { color: #6F6450; }
-      .footer-link { color: #6F6450; }
-      .footer-link:hover { color: #8A7D62; }
+    body.dark .btn-download {
+      background: #C2A96B;
+      color: #1A1714;
     }
+
+    body.dark .btn-outline {
+      color: #F4EACF;
+      border-color: #3A3428;
+    }
+    body.dark .btn-outline:hover {
+      border-color: #8A7D62;
+      background: rgba(244, 234, 207, 0.04);
+    }
+
+    body.dark .hero-tags { color: #8A7D62; }
+    body.dark .hero h1 { color: #F4EACF; }
+    body.dark .hero-subtitle { color: #8A7D62; }
+
+    body.dark .screenshot { border-color: #3A3428; box-shadow: 0 4px 24px rgba(0,0,0,0.2); }
+    body.dark .screenshot-light { background: #1E1B14; }
+    body.dark .screenshot-dark { background: #0E0C08; }
+
+    body.dark .value-prop h3 { color: #F4EACF; }
+    body.dark .value-prop p { color: #8A7D62; }
+
+    body.dark .bottom-cta { border-top-color: #3A3428; }
+    body.dark .bottom-cta h2 { color: #F4EACF; }
+    body.dark .bottom-cta-subtitle { color: #8A7D62; }
+    body.dark .bottom-cta-subtitle a { color: #A89A7C; text-decoration-color: #C2A96B; }
+    body.dark .bottom-cta-subtitle a:hover { color: #F4EACF; }
+
+    body.dark footer { border-top-color: #3A3428; }
+    body.dark .footer-logo { color: #6F6450; }
+    body.dark .footer-link { color: #6F6450; }
+    body.dark .footer-link:hover { color: #8A7D62; }
+
+    .theme-toggle {
+      font-size: 16px;
+      cursor: pointer;
+      color: #A89A7C;
+      background: none;
+      border: none;
+      padding: 4px;
+      transition: color 0.2s;
+      font-family: inherit;
+      line-height: 1;
+    }
+    .theme-toggle:hover { color: #5B5240; }
+    body.dark .theme-toggle { color: #6F6450; }
+    body.dark .theme-toggle:hover { color: #F4EACF; }
 
     /* Responsive */
     @media (max-width: 900px) {
@@ -457,6 +470,7 @@
         <a href="#" class="nav-link">docs</a>
         <a href="https://github.com/TristanH/wikiwise" class="nav-link">github</a>
         <a href="https://github.com/TristanH/wikiwise/releases/latest/download/Wikiwise-macOS.dmg" class="btn-download">download</a>
+        <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">&#9681;</button>
       </div>
     </nav>
 
@@ -516,5 +530,12 @@
     </footer>
 
   </div>
+<script>
+  var toggle = document.getElementById('theme-toggle');
+  toggle.addEventListener('click', function () {
+    document.body.classList.toggle('dark');
+    toggle.textContent = document.body.classList.contains('dark') ? '\u2600' : '\u25D1';
+  });
+</script>
 </body>
 </html>
