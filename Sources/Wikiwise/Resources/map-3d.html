@@ -32,12 +32,6 @@
   .nav-toggle a:last-child { border-right: none; }
   .nav-toggle a:hover { background: rgba(42, 157, 143, 0.12); color: rgba(255,255,255,0.7); }
   .nav-toggle a.active { background: #2A9D8F; color: #0a0a0a; }
-  .theme-toggle {
-    padding: 4px 10px; font-size: 1rem; cursor: pointer;
-    color: rgba(255,255,255,0.4); transition: color 0.15s;
-    user-select: none; line-height: 1;
-  }
-  .theme-toggle:hover { color: rgba(255,255,255,0.8); }
 
   /* ── Light mode overrides ── */
   body.light { background: #fbfaf5; color: #1a1612; }
@@ -45,8 +39,6 @@
   body.light .nav-toggle a { color: #948b7e; border-color: #e3dccb; }
   body.light .nav-toggle a:hover { background: rgba(122,31,31,0.08); color: #5B5240; }
   body.light .nav-toggle a.active { background: #7a1f1f; color: #fbfaf5; }
-  body.light .theme-toggle { color: #948b7e; }
-  body.light .theme-toggle:hover { color: #5B5240; }
   body.light .stats-panel { background: rgba(251,250,245,0.9); border-color: #e3dccb; color: #6c645a; }
   body.light .stats-panel strong { color: #7a1f1f; }
   body.light .legend-panel { background: rgba(251,250,245,0.9); border-color: #e3dccb; color: #5B5240; }
@@ -198,7 +190,7 @@
   }
 </style>
 </head>
-<body class="light">
+<body>
 <div id="scene-container"></div>
 <div class="scanlines"></div>
 
@@ -206,7 +198,7 @@
   <a href="map.html">Map</a>
   <a href="map-3d.html" class="active">3D</a>
   <a href="graph.html">Classic</a>
-  <span class="theme-toggle" id="theme-toggle" title="Toggle light/dark">&#9681;</span>
+
 </div>
 
 <div class="stats-panel" id="stats-panel"></div>
@@ -287,7 +279,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
     }
   };
 
-  var currentTheme = 'light';
+  var currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   var T = THEMES[currentTheme];
   var COLORS = T.colors;
   var COLOR_HEX = T.colorHex;
@@ -902,9 +894,9 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // ── Theme toggle ──
-  document.getElementById('theme-toggle').addEventListener('click', function () {
-    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  // ── Theme: follow system preference ──
+  function applyTheme(theme) {
+    currentTheme = theme;
     T = THEMES[currentTheme];
     COLORS = T.colors;
     COLOR_HEX = T.colorHex;
@@ -943,7 +935,6 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
       var node = nodeById[nodeId];
       var color = T.colors[node.category] || 0x888888;
       var sprite = labelByNodeId[nodeId];
-      // Recreate label texture with new color
       var text = node.label.replace(/[~…]/g, '');
       if (text.length > 18) text = text.substring(0, 16) + '..';
       var c = document.createElement('canvas');
@@ -965,12 +956,16 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 
     // Update edge colors
     var edgeMat = new THREE.LineBasicMaterial({ color: T.edge, transparent: true, opacity: 0.15 });
-    var edgeMatBright = new THREE.LineBasicMaterial({ color: T.edge, transparent: true, opacity: 0.35 });
     edgeLines.forEach(function (line) {
-      var dist = 3; // approximate
       line.userData.defaultMat = edgeMat;
       line.material = edgeMat;
     });
+  }
+  // Apply initial theme based on body class
+  document.body.classList.toggle('light', currentTheme === 'light');
+  // Listen for system/app appearance changes
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+    applyTheme(e.matches ? 'dark' : 'light');
   });
 
   // ── Animate ──

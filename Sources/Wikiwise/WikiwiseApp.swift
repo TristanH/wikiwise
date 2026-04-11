@@ -8,13 +8,29 @@ extension Notification.Name {
     static let refreshWiki = Notification.Name("refreshWiki")
 }
 
+enum AppearanceMode: String, CaseIterable {
+    case auto = "Auto"
+    case light = "Light"
+    case dark = "Dark"
+
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .auto:  return nil              // follow system
+        case .light: return NSAppearance(named: .aqua)
+        case .dark:  return NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
 @main
 struct WikiwiseApp: App {
+    @AppStorage("appearanceMode") private var appearanceMode: String = AppearanceMode.auto.rawValue
+
     init() {
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate(ignoringOtherApps: true)
-        // Force light appearance — the editorial palette doesn't support dark mode
-        NSApplication.shared.appearance = NSAppearance(named: .aqua)
+        let mode = AppearanceMode(rawValue: UserDefaults.standard.string(forKey: "appearanceMode") ?? "Auto") ?? .auto
+        NSApplication.shared.appearance = mode.nsAppearance
 
         // Set app icon from bundled .icns
         if let icnsURL = wikiwiseBundle.url(forResource: "Wikiwise", withExtension: "icns"),
@@ -26,9 +42,13 @@ struct WikiwiseApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onChange(of: appearanceMode) { _, newValue in
+                    let mode = AppearanceMode(rawValue: newValue) ?? .auto
+                    NSApplication.shared.appearance = mode.nsAppearance
+                }
         }
         .windowStyle(.titleBar)
-        .defaultSize(width: 1000, height: 700)
+        .defaultSize(width: 1500, height: 1000)
         .commands {
             CommandGroup(after: .newItem) {
                 Divider()
