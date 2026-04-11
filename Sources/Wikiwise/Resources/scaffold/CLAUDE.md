@@ -23,6 +23,13 @@ A personal wiki maintained by an LLM agent, following the [llm-wiki pattern](llm
 - Source-summary pages start with a frontmatter block: `type`, `date`, `author`, `url`, `raw` (path into `raw/`).
 - Log entries prefix: `## [YYYY-MM-DD HH:MM] <op> | <title>` (local time).
 
+## Images
+
+Two ways to include images in wiki pages:
+
+1. **External URLs** — link directly: `![alt](https://example.com/image.png)`. Works in the app and in published wikis.
+2. **Local images** — save the file to `wiki/assets/` and reference it as `![alt](assets/filename.png)`. The build system copies `wiki/assets/` → `site/out/assets/` automatically. Use this for images you want to keep with the wiki (screenshots, diagrams, etc.).
+
 ## Writing style
 
 Wiki pages are short blog posts, not reference dumps. Write for a human reader who reads top-to-bottom.

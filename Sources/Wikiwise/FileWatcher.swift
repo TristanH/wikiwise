@@ -101,6 +101,8 @@ final class FileWatcher {
                 watcher.pendingMarkdownPaths.insert(path)
             } else if ["build.js", "app.js", "graph.js", "map.html"].contains(filename) {
                 watcher.pendingStructure = true
+            } else if path.contains("/wiki/assets/") {
+                watcher.pendingStructure = true
             } else {
                 continue
             }

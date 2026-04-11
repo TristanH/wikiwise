@@ -3,6 +3,7 @@
 // Swift bridge functions:
 //   readFile(path)      → String
 //   writeFile(path, content)
+//   copyFile(src, dst)  → Bool (binary-safe)
 //   listDir(path)       → [String]
 //   mkdirp(path)
 //   fileExists(path)    → Bool
@@ -133,6 +134,7 @@ function compile(sourceDir, outputDir) {
   if (typeof bundledAppJS !== 'undefined') {
     writeFile(outputDir + '/app.js', bundledAppJS);
   }
+  copyAssets(sourceDir, outputDir);
 
   // Persist cache for next run
   saveCompileCache(cachePath, pages, markdownFiles);
@@ -231,6 +233,7 @@ function scanPages(sourceDir, outputDir) {
   if (typeof bundledAppJS !== 'undefined') {
     writeFile(outputDir + '/app.js', bundledAppJS);
   }
+  copyAssets(sourceDir, outputDir);
 
   // Build queue of slugs not yet compiled
   var pending = [];
@@ -335,6 +338,22 @@ function compileNextBatch(batchSize) {
     if (slug) compilePage(slug);
   }
   return _progressive.pending.length;
+}
+
+// Copy wiki/assets/ → site/out/assets/ (binary-safe via copyFile bridge)
+function copyAssets(sourceDir, outputDir) {
+  if (typeof copyFile === 'undefined') return;
+  var assetsDir = sourceDir + '/wiki/assets';
+  if (!fileExists(assetsDir)) return;
+  var files = listDir(assetsDir);
+  if (!files.length) return;
+  var outAssets = outputDir + '/assets';
+  mkdirp(outAssets);
+  var copied = 0;
+  for (var i = 0; i < files.length; i++) {
+    if (copyFile(assetsDir + '/' + files[i], outAssets + '/' + files[i])) copied++;
+  }
+  if (copied) log('Copied ' + copied + ' asset(s) to ' + outAssets);
 }
 
 // Re-read CSS from disk and update the progressive state. Called when

@@ -126,6 +126,18 @@ final class Compiler {
         }
         jsContext.setObject(fileExists, forKeyedSubscript: "fileExists" as NSString)
 
+        // copyFile(src, dst) — binary-safe file copy
+        let copyFile: @convention(block) (String, String) -> Bool = { src, dst in
+            do {
+                let dstURL = URL(fileURLWithPath: dst)
+                try fm.createDirectory(at: dstURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                if fm.fileExists(atPath: dst) { try fm.removeItem(atPath: dst) }
+                try fm.copyItem(atPath: src, toPath: dst)
+                return true
+            } catch { return false }
+        }
+        jsContext.setObject(copyFile, forKeyedSubscript: "copyFile" as NSString)
+
         // fileMtime(path) → Double (seconds since epoch, 0 if not found)
         let fileMtime: @convention(block) (String) -> Double = { path in
             guard let attrs = try? fm.attributesOfItem(atPath: path),
