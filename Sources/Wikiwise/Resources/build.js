@@ -19,6 +19,102 @@
 var md = markdownit({ html: true, linkify: true, typographer: true });
 
 // ============================================================
+//  KaTeX math plugin for markdown-it
+//  Handles $...$ (inline) and $$...$$ (block) LaTeX math
+// ============================================================
+
+(function mathPlugin(md) {
+  // --- Block rule: $$...$$ on its own lines ---
+  function mathBlock(state, startLine, endLine, silent) {
+    var startPos = state.bMarks[startLine] + state.tShift[startLine];
+    var maxPos = state.eMarks[startLine];
+    if (startPos + 2 > maxPos) return false;
+    if (state.src.charCodeAt(startPos) !== 0x24 || state.src.charCodeAt(startPos + 1) !== 0x24) return false;
+
+    // Opening $$ may have content after it on the same line (single-line block)
+    var openContent = state.src.slice(startPos + 2, maxPos).trim();
+    if (openContent && openContent.slice(-2) === '$$') {
+      // Single-line: $$...$$ all on one line
+      if (silent) return true;
+      var tok = state.push('math_block', 'math', 0);
+      tok.content = openContent.slice(0, -2).trim();
+      tok.map = [startLine, startLine + 1];
+      state.line = startLine + 1;
+      return true;
+    }
+
+    // Multi-line: find closing $$
+    var nextLine = startLine;
+    for (;;) {
+      nextLine++;
+      if (nextLine >= endLine) return false;
+      var lineStart = state.bMarks[nextLine] + state.tShift[nextLine];
+      var lineMax = state.eMarks[nextLine];
+      var lineText = state.src.slice(lineStart, lineMax).trim();
+      if (lineText === '$$') break;
+    }
+
+    if (silent) return true;
+    var tok = state.push('math_block', 'math', 0);
+    tok.content = state.getLines(startLine + 1, nextLine, state.tShift[startLine], false).trim();
+    if (openContent) tok.content = openContent + '\n' + tok.content;
+    tok.map = [startLine, nextLine + 1];
+    state.line = nextLine + 1;
+    return true;
+  }
+
+  // --- Inline rule: $...$ ---
+  function mathInline(state, silent) {
+    if (state.src.charCodeAt(state.pos) !== 0x24) return false;
+
+    // Skip if this is $$
+    if (state.src.charCodeAt(state.pos + 1) === 0x24) return false;
+
+    var start = state.pos + 1;
+    // Find closing $ (not preceded by backslash, not followed by digit right after opening)
+    var end = start;
+    while (end < state.posMax) {
+      if (state.src.charCodeAt(end) === 0x24 && state.src.charCodeAt(end - 1) !== 0x5C) break;
+      end++;
+    }
+    if (end >= state.posMax) return false;
+    var content = state.src.slice(start, end).trim();
+    if (!content) return false;
+
+    if (!silent) {
+      var tok = state.push('math_inline', 'math', 0);
+      tok.content = content;
+    }
+    state.pos = end + 1;
+    return true;
+  }
+
+  function renderMath(content, displayMode) {
+    if (typeof katex !== 'undefined') {
+      try {
+        return katex.renderToString(content, { throwOnError: false, displayMode: displayMode });
+      } catch (e) {
+        return '<span class="math-error">' + content + '</span>';
+      }
+    }
+    // Fallback if KaTeX not loaded
+    return displayMode
+      ? '<div class="math-block">' + content + '</div>'
+      : '<span class="math-inline">' + content + '</span>';
+  }
+
+  md.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
+  md.inline.ruler.before('escape', 'math_inline', mathInline);
+
+  md.renderer.rules.math_block = function(tokens, idx) {
+    return '<div class="katex-display">' + renderMath(tokens[idx].content, true) + '</div>\n';
+  };
+  md.renderer.rules.math_inline = function(tokens, idx) {
+    return renderMath(tokens[idx].content, false);
+  };
+})(md);
+
+// ============================================================
 //  Constants
 // ============================================================
 
@@ -134,6 +230,10 @@ function compile(sourceDir, outputDir) {
   if (typeof bundledAppJS !== 'undefined') {
     writeFile(outputDir + '/app.js', bundledAppJS);
   }
+  if (typeof bundledKatexCSS !== 'undefined') {
+    writeFile(outputDir + '/katex.min.css', bundledKatexCSS);
+  }
+  copyKatexFonts(sourceDir, outputDir);
   copyAssets(sourceDir, outputDir);
 
   // Persist cache for next run
@@ -233,6 +333,11 @@ function scanPages(sourceDir, outputDir) {
   if (typeof bundledAppJS !== 'undefined') {
     writeFile(outputDir + '/app.js', bundledAppJS);
   }
+  // Copy KaTeX CSS and fonts for math rendering
+  if (typeof bundledKatexCSS !== 'undefined') {
+    writeFile(outputDir + '/katex.min.css', bundledKatexCSS);
+  }
+  copyKatexFonts(sourceDir, outputDir);
   copyAssets(sourceDir, outputDir);
 
   // Build queue of slugs not yet compiled
@@ -338,6 +443,26 @@ function compileNextBatch(batchSize) {
     if (slug) compilePage(slug);
   }
   return _progressive.pending.length;
+}
+
+// Copy KaTeX font files to the output directory so katex.min.css can
+// reference them via the fonts/ relative path.
+function copyKatexFonts(sourceDir, outputDir) {
+  if (typeof copyFile === 'undefined') return;
+  if (typeof bundledKatexFontsDir === 'undefined') return;
+  var fontsDir = bundledKatexFontsDir;
+  if (!fileExists(fontsDir)) return;
+  var outFonts = outputDir + '/fonts';
+  mkdirp(outFonts);
+  var entries = listDir(fontsDir);
+  for (var i = 0; i < entries.length; i++) {
+    var src = fontsDir + '/' + entries[i];
+    var dst = outFonts + '/' + entries[i];
+    var srcMtime = fileMtime(src);
+    var dstMtime = fileMtime(dst);
+    if (dstMtime >= srcMtime && srcMtime > 0) continue;
+    copyFile(src, dst);
+  }
 }
 
 // Copy wiki/assets/ → site/out/assets/ (binary-safe via copyFile bridge).
@@ -610,6 +735,7 @@ function buildPageHtml(options) {
     '<meta name="viewport" content="width=device-width,initial-scale=1">',
     '<title>' + escapeHtml(options.title) + ' \u2014 ' + escapeHtml(wikiName) + '</title>',
     FONT_LINKS,
+    '<link rel="stylesheet" href="katex.min.css">',
     '<link rel="stylesheet" href="style.css">',
     '</head>',
     '<body class="page-' + escapeHtml(options.slug) + '">',

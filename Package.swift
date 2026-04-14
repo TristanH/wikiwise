@@ -15,6 +15,9 @@ let package = Package(
             ],
             resources: [
                 .copy("Resources/markdown-it.min.js"),
+                .copy("Resources/katex.min.js"),
+                .copy("Resources/katex.min.css"),
+                .copy("Resources/katex-fonts"),
                 .copy("Resources/style.css"),
                 .copy("Resources/build.js"),
                 .copy("Resources/app.js"),

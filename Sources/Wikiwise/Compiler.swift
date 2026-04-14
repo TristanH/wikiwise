@@ -171,6 +171,28 @@ final class Compiler {
             jsContext.evaluateScript(src)
         }
 
+        // Load KaTeX for math rendering — must come before build.js
+        if let url = wikiwiseBundle.url(forResource: "katex.min", withExtension: "js"),
+           let src = try? String(contentsOf: url, encoding: .utf8) {
+            jsContext.evaluateScript(src)
+        }
+
+        // Load KaTeX CSS as a JS string constant
+        if let url = wikiwiseBundle.url(forResource: "katex.min", withExtension: "css"),
+           let css = try? String(contentsOf: url, encoding: .utf8) {
+            let escaped = css
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "`", with: "\\`")
+                .replacingOccurrences(of: "$", with: "\\$")
+            jsContext.evaluateScript("var bundledKatexCSS = `\(escaped)`;")
+        }
+
+        // Expose KaTeX fonts directory path so build.js can copy font files
+        if let url = wikiwiseBundle.url(forResource: "katex-fonts", withExtension: nil) {
+            let escaped = url.path.replacingOccurrences(of: "'", with: "\\'")
+            jsContext.evaluateScript("var bundledKatexFontsDir = '\(escaped)';")
+        }
+
         // Load CSS as a JS string constant — prefer user's site/style.css
         let cssPath = sourceDir.appendingPathComponent("site/style.css").path
         let cssSource: String? = (try? String(contentsOfFile: cssPath, encoding: .utf8))
