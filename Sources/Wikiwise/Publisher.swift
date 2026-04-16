@@ -121,15 +121,36 @@ final class Publisher {
 
         var files = try enumerateFiles(in: siteFolder)
         // For web hosting, copy home.html → index.html so the root URL serves home.
-        // Rename the original index.html (catalog) → catalog.html to avoid collision.
+        // Rename the original index.html (catalog) → catalog.html to avoid collision,
+        // and rewrite all internal links so href="index.html" → href="catalog.html".
         if let home = files.first(where: { $0.relativePath == "home.html" }) {
             files = files.map { entry in
                 if entry.relativePath == "index.html" {
                     return FileEntry(relativePath: "catalog.html", data: entry.data)
                 }
+                // Rewrite links in HTML files: index.html → catalog.html
+                if entry.relativePath.hasSuffix(".html"),
+                   let html = String(data: entry.data, encoding: .utf8) {
+                    let rewritten = html
+                        .replacingOccurrences(of: "href=\"index.html\"", with: "href=\"catalog.html\"")
+                        .replacingOccurrences(of: "href=\"index.html#", with: "href=\"catalog.html#")
+                    if rewritten != html, let data = rewritten.data(using: .utf8) {
+                        return FileEntry(relativePath: entry.relativePath, data: data)
+                    }
+                }
                 return entry
             }
-            files.append(FileEntry(relativePath: "index.html", data: home.data))
+            // Also rewrite links in the home.html copy that becomes index.html
+            var homeData = home.data
+            if let html = String(data: home.data, encoding: .utf8) {
+                let rewritten = html
+                    .replacingOccurrences(of: "href=\"index.html\"", with: "href=\"catalog.html\"")
+                    .replacingOccurrences(of: "href=\"index.html#", with: "href=\"catalog.html#")
+                if let data = rewritten.data(using: .utf8) {
+                    homeData = data
+                }
+            }
+            files.append(FileEntry(relativePath: "index.html", data: homeData))
         }
         let result = try await upload(config: &config, files: files, isFirstPublish: isFirstPublish)
 

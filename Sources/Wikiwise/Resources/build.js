@@ -669,12 +669,16 @@ function buildPreviewIndex(pages) {
 //  Graph generation
 // ============================================================
 
+// Reference pages excluded from graph/map — they are scaffold docs, not wiki content.
+var GRAPH_EXCLUDED_SLUGS = { 'llm-wiki': true, 'agents': true };
+
 function writeGraph(pages, css, outputDir) {
   var nodes = [];
   var nodeExists = {};
   var degree = {};
 
   for (var pageSlug in pages) {
+    if (GRAPH_EXCLUDED_SLUGS[pageSlug]) continue;
     var pt = pages[pageSlug].plainText || '';
     var wordCount = pt ? pt.split(/\s+/).length : 0;
     nodes.push({
@@ -742,6 +746,7 @@ function buildPageHtml(options) {
     buildMasthead(),
     '<div class="layout">',
     railHtml,
+    '<div class="article-wrap">',
     '<div class="article">',
     '<div class="article-head">',
     '  <h1 class="article-title">' + escapeHtml(options.title) + '</h1>',
@@ -749,6 +754,7 @@ function buildPageHtml(options) {
     '</div>',
     '<div class="article-body">',
     options.body,
+    '</div>',
     '</div>',
     '</div>',
     '</div>',

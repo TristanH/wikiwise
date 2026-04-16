@@ -223,8 +223,13 @@ a.extlink::after {
   max-height: calc(100vh - 9rem);
   overflow-y: auto;
 }
+.article-wrap {
+  display: flex;
+  justify-content: center;
+}
 .article {
   max-width: var(--measure);
+  width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
