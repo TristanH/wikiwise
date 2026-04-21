@@ -238,6 +238,10 @@ a.extlink::after {
 @media (max-width: 80rem) {
   .rail { display: none; }
 }
+/* Nudge article right when the rail is visible but close to the content */
+@media (min-width: 80.01rem) and (max-width: 100rem) {
+  .article-wrap { padding-left: 3rem; }
+}
 
 /* ============================================================
    Rail (left): nav + sticky TOC
@@ -346,6 +350,19 @@ a.extlink::after {
   color: var(--muted);
   margin-top: 0.7rem;
   letter-spacing: 0.01em;
+}
+.raw-badge {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  background: var(--rule-soft);
+  display: inline-block;
+  padding: 0.2em 0.7em;
+  border-radius: 3px;
+  margin-bottom: 0.8rem;
 }
 
 .article-body { font-size: var(--base); line-height: var(--leading); }

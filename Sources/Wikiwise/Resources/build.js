@@ -307,6 +307,7 @@ function scanPages(sourceDir, outputDir) {
       hasInfobox: infobox,
       plainText: markdownToPlainText(source),
       richText: markdownToRichText(source),
+      isRaw: isRawPath(filePath),
       mtime: fileMtime(filePath),
       // html is NOT populated yet — deferred to compilePage()
       html: null
@@ -398,7 +399,7 @@ function compilePage(slug) {
     css: state.css,
     tocHtml: tocResult.tocHtml,
     slug: slug,
-    
+    isRaw: page.isRaw,
   });
 
   writeFile(htmlPath, html);
@@ -412,7 +413,7 @@ function compileAdhoc(filePath, outputPath) {
   var source = readFile(filePath);
   if (!source) return false;
 
-  var slug = filePath.split('/').pop().replace(/\.md$/i, '').toLowerCase().replace(/ /g, '-');
+  var slug = slugFromPath(filePath);
   var knownSlugs = _progressive ? _progressive.knownSlugs : {};
   var rendered = renderPageBody(source, knownSlugs, slug);
   var css = _progressive ? _progressive.css : (typeof bundledCSS !== 'undefined' ? bundledCSS : '');
@@ -426,7 +427,7 @@ function compileAdhoc(filePath, outputPath) {
     css: css,
     tocHtml: tocResult.tocHtml,
     slug: slug,
-    
+    isRaw: isRawPath(filePath),
   });
 
   writeFile(outputPath, html);
@@ -556,6 +557,7 @@ function parseAllPages(markdownFiles, knownSlugs, cache) {
     // Reuse cached parse result if the source file hasn't changed
     var cached = cache[pageSlug];
     if (cached && cached.mtime === mtime) {
+      cached.isRaw = isRawPath(filePath);
       pages[pageSlug] = cached;
       cacheHits++;
       return;
@@ -573,6 +575,7 @@ function parseAllPages(markdownFiles, knownSlugs, cache) {
       outgoingLinks: rendered.outgoingLinks,
       plainText: markdownToPlainText(source),
       richText: markdownToRichText(source),
+      isRaw: isRawPath(filePath),
       mtime: mtime
     };
   });
@@ -598,7 +601,7 @@ function renderAllPages(pages, backlinkMap, css, outputDir) {
       css: css,
       tocHtml: tocResult.tocHtml,
       slug: pageSlug,
-      
+      isRaw: page.isRaw,
     });
 
     writeFile(outputDir + '/' + pageSlug + '.html', html);
@@ -678,7 +681,7 @@ function writeGraph(pages, css, outputDir) {
   var degree = {};
 
   for (var pageSlug in pages) {
-    if (GRAPH_EXCLUDED_SLUGS[pageSlug]) continue;
+    if (GRAPH_EXCLUDED_SLUGS[pageSlug] || pages[pageSlug].isRaw) continue;
     var pt = pages[pageSlug].plainText || '';
     var wordCount = pt ? pt.split(/\s+/).length : 0;
     nodes.push({
@@ -694,6 +697,7 @@ function writeGraph(pages, css, outputDir) {
 
   var links = [];
   for (var pageSlug in pages) {
+    if (!nodeExists[pageSlug]) continue;
     var outgoing = pages[pageSlug].outgoingLinks;
     for (var i = 0; i < outgoing.length; i++) {
       var targetSlug = outgoing[i];
@@ -749,6 +753,7 @@ function buildPageHtml(options) {
     '<div class="article-wrap">',
     '<div class="article">',
     '<div class="article-head">',
+    (options.isRaw ? '  <div class="raw-badge">Raw source</div>' : ''),
     '  <h1 class="article-title">' + escapeHtml(options.title) + '</h1>',
     (options.subtitle || ''),
     '</div>',
@@ -1012,7 +1017,7 @@ function findMarkdownFiles(dir, outputDir) {
   for (var i = 0; i < entries.length; i++) {
     var entry = entries[i];
     var entryPath = dir + '/' + entry;
-    if (entryPath === outputDir || entry.charAt(0) === '.' || entry === 'raw') continue;
+    if (entryPath === outputDir || entry.charAt(0) === '.' || entry === 'site' || entry === 'skills') continue;
     if (/\.md$/i.test(entry)) {
       results.push(entryPath);
     } else if (!/\./.test(entry)) {
@@ -1031,7 +1036,16 @@ function buildSlugSet(filePaths) {
 
 function slugFromPath(filePath) {
   var filename = filePath.split('/').pop();
-  return filename.replace(/\.md$/i, '').toLowerCase().replace(/ /g, '-');
+  var slug = filename.replace(/\.md$/i, '').toLowerCase().replace(/ /g, '-');
+  // Namespace raw files to avoid collisions with wiki pages
+  if (isRawPath(filePath)) slug = 'raw-' + slug;
+  return slug;
+}
+
+function isRawPath(filePath) {
+  // Match /raw/ as a directory segment, but only within the wiki project
+  var parts = filePath.split('/');
+  return parts.indexOf('raw') !== -1 && parts.indexOf('raw') >= parts.length - 2;
 }
 
 function extractTitle(source) {
@@ -1102,12 +1116,16 @@ function renderSubtitle(fm) {
   return '<div class="article-subtitle">' + bits.join(' \u00b7 ') + '</div>';
 }
 
-// Build a single infobox row, auto-linking URLs.
+// Build a single infobox row, auto-linking URLs and raw file references.
 function buildInfoboxRow(key, value) {
   var cellHtml;
   if (/^https?:\/\//.test(value)) {
     cellHtml = '<a href="' + escapeHtml(value) + '" class="extlink" target="_blank" rel="noopener">' +
       escapeHtml(value) + '</a>';
+  } else if (key === 'raw' && /^raw\/[^\/?.#]+\.md$/i.test(value)) {
+    var rawFilename = value.replace(/^raw\//, '');
+    var rawSlug = 'raw-' + rawFilename.replace(/\.md$/i, '').toLowerCase().replace(/ /g, '-');
+    cellHtml = '<a class="wikilink" href="' + encodeURI(rawSlug) + '.html">' + escapeHtml(value) + '</a>';
   } else {
     cellHtml = escapeHtml(value);
   }
