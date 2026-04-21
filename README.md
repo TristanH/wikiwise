@@ -1,8 +1,8 @@
 # Wikiwise
 
-> **Alpha software.** Wikiwise is under active development and may have bugs. Use at your own risk.
-
 A native macOS app that turns any folder of markdown files into a browsable, publishable wiki — maintained by your coding agent.
+
+> **Alpha software.** Wikiwise is under active development and may have bugs. Use at your own risk.
 
 **[Download for macOS](https://github.com/TristanH/wikiwise/releases/latest/download/Wikiwise-macOS.dmg)** (Apple Silicon + Intel, signed and notarized)
 
