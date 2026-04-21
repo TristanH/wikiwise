@@ -244,6 +244,38 @@ final class Publisher {
         return suffix
     }
 
+    /// Unpublish a wiki: delete all files from the server and remove publish.json locally.
+    static func unpublish(projectRoot: URL) async throws {
+        let configURL = projectRoot.appendingPathComponent("publish.json")
+        guard let data = FileManager.default.contents(atPath: configURL.path),
+              let config = try? JSONDecoder().decode(PublishConfig.self, from: data) else {
+            throw PublishError.corruptConfig
+        }
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(config.token)", forHTTPHeaderField: "Authorization")
+        request.setValue(config.subdomain, forHTTPHeaderField: "X-Subdomain")
+
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw PublishError.networkError("Invalid response")
+        }
+
+        switch http.statusCode {
+        case 200:
+            try? FileManager.default.removeItem(at: configURL)
+        case 403:
+            throw PublishError.tokenMismatch
+        case 404:
+            // Already gone — clean up local config anyway
+            try? FileManager.default.removeItem(at: configURL)
+        default:
+            let msg = String(data: responseData, encoding: .utf8) ?? "Unknown error"
+            throw PublishError.serverError(http.statusCode, msg)
+        }
+    }
+
     private static func randomHex(_ length: Int) -> String {
         let chars = "0123456789abcdef"
         return String((0..<length).map { _ in chars.randomElement()! })

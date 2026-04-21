@@ -149,6 +149,7 @@ struct ContentView: View {
     @State private var publishResult: PublishResult? = nil
     @State private var publishError: String? = nil
     @State private var publishConfig: PublishConfig? = nil
+    @State private var showUnpublishConfirm = false
 
     private var folderDisplayName: String {
         rootURL?.lastPathComponent ?? "WikiWise"
@@ -231,6 +232,12 @@ struct ContentView: View {
                     ? "Your wiki is live at \(result.url.absoluteString)\n\nA publish.json file has been saved to your project. Keep it safe \u{2014} it\u{2019}s your key to update this site."
                     : "Updated \(result.url.absoluteString)")
             }
+        }
+        .alert("Unpublish wiki?", isPresented: $showUnpublishConfirm) {
+            Button("Cancel", role: .cancel) { }
+            Button("Unpublish", role: .destructive) { performUnpublish() }
+        } message: {
+            Text("This will take your wiki offline and delete it from wiki-wise.com. Your local files are not affected.")
         }
     }
 
@@ -1163,6 +1170,27 @@ struct ContentView: View {
         }
     }
 
+    private func performUnpublish() {
+        guard let root = rootURL else { return }
+        isPublishing = true
+        Task {
+            do {
+                try await Publisher.unpublish(projectRoot: root)
+                await MainActor.run {
+                    isPublishing = false
+                    publishConfig = nil
+                    pendingSubdomain = ""
+                    subdomainAvailability = .unknown
+                }
+            } catch {
+                await MainActor.run {
+                    isPublishing = false
+                    publishError = error.localizedDescription
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     private var publishConfirmSheet: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1250,6 +1278,13 @@ struct ContentView: View {
                 .lineSpacing(2)
 
             HStack {
+                if publishConfig != nil {
+                    Button("Unpublish\u{2026}") {
+                        showPublishConfirm = false
+                        showUnpublishConfirm = true
+                    }
+                    .foregroundStyle(.red)
+                }
                 Spacer()
                 Button("Cancel") {
                     showPublishConfirm = false
