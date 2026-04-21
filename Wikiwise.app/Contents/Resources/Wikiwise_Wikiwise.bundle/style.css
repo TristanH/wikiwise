@@ -1,0 +1,900 @@
+/* ============================================================
+   Wikiwise — editorial reading surface
+   Body: Source Serif 4. Chrome: Inter. One ink, one accent.
+   ============================================================ */
+
+:root {
+  --bg: #fbfaf5;
+  --surface: #ffffff;
+  --ink: #1a1612;
+  --ink-soft: #2c2722;
+  --muted: #6c645a;
+  --muted-2: #948b7e;
+  --rule: #e3dccb;
+  --rule-soft: #efe8d6;
+  --accent: #7a1f1f;
+  --accent-soft: #b25e5e;
+  --highlight: #f6ecd1;
+
+  --serif: "Source Serif 4", "Source Serif Pro", "Charter", "Iowan Old Style", "Georgia", serif;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", "iA Writer Mono", ui-monospace, "Menlo", monospace;
+
+  --measure: 44rem;
+  --rail-w: 12rem;
+  --base: 1.0625rem;
+  --leading: 1.62;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1E1B14;
+    --surface: #0E0C08;
+    --ink: #F4EACF;
+    --ink-soft: #E8DFC9;
+    --muted: #8A7D62;
+    --muted-2: #6F6450;
+    --rule: #2A2419;
+    --rule-soft: #1E1B14;
+    --accent: #C2A96B;
+    --accent-soft: #A89A7C;
+    --highlight: #C2A96B14;
+  }
+  .callout-note { border-left-color: #5B7FAD; }
+  .callout-note .callout-title { color: #5B7FAD; }
+  .callout-warning { border-left-color: #D08040; }
+  .callout-warning .callout-title { color: #D08040; }
+  .callout-tip { border-left-color: #4A9A70; }
+  .callout-tip .callout-title { color: #4A9A70; }
+  .op-ingest { background: #1c6a4a1a; color: #4A9A70; border-color: #2A3A30; }
+  .op-seed { background: #C2A96B1a; color: #C2A96B; border-color: #3A3420; }
+  .op-digest { background: #2c4a8a1a; color: #5B7FAD; border-color: #2A3040; }
+  .op-promote, .op-schema { background: #5a28901a; color: #9A6BC0; border-color: #302840; }
+  .op-index { background: #8a28281a; color: #C06060; border-color: #3A2828; }
+  .article-body code { color: #C2A96B; background: #2A241980; }
+  .article-body pre { background: #2A241980; border-color: #3A3420; }
+  .article-body pre code { color: #C2A96B; }
+}
+
+* { box-sizing: border-box; }
+
+html {
+  font-size: 17px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--base);
+  line-height: var(--leading);
+  color: var(--ink);
+  background: var(--bg);
+  font-feature-settings: "liga", "kern", "dlig";
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  transition: border-color .12s ease, background-color .12s ease;
+}
+a:hover {
+  border-bottom-color: var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+a.wikilink.missing {
+  color: var(--muted);
+  border-bottom: 1px dashed var(--accent-soft);
+}
+a.extlink::after {
+  content: " ↗";
+  font-size: 0.75em;
+  color: var(--muted-2);
+}
+
+/* ============================================================
+   Masthead
+   ============================================================ */
+.masthead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 1.6rem 2.5rem 1.3rem;
+  background: var(--bg);
+}
+.masthead-mark {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+  font-family: var(--serif);
+  border: none;
+  color: var(--ink);
+  text-decoration: none;
+}
+.masthead-mark:hover { background: none; border: none; color: var(--ink); }
+.masthead-mark-letter {
+  font-size: 2.8rem;
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 0.78;
+  color: var(--ink);
+}
+.masthead-mark-words {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 0.25rem;
+}
+.masthead-mark-word-primary {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg);
+  line-height: 1.3;
+}
+.masthead-mark-word-secondary {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #A89A7C;
+  line-height: 1.3;
+}
+
+.masthead-search { position: relative; }
+#search-input {
+  font-family: var(--sans);
+  font-size: 0.84rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  width: 16rem;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+#search-input:focus {
+  outline: none;
+  border-color: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+#search-input::placeholder { color: var(--muted-2); font-style: italic; }
+
+#search-results {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 23rem;
+  max-height: 28rem;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  box-shadow: 0 14px 40px rgba(40, 30, 20, 0.14);
+  z-index: 100;
+  font-family: var(--sans);
+}
+#search-results a {
+  display: block;
+  padding: 0.7rem 1rem;
+  border: none;
+  border-bottom: 1px solid var(--rule-soft);
+  color: var(--ink);
+  border-radius: 0;
+}
+#search-results a:hover { background: var(--rule-soft); }
+#search-results a:last-child { border-bottom: none; }
+#search-results strong {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 0.94rem;
+  display: block;
+  color: var(--ink);
+}
+#search-results .hint {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   Layout — left rail + reading column
+   ============================================================ */
+.layout {
+  position: relative;
+  padding: 3rem 2.5rem 6rem;
+}
+.rail {
+  position: fixed;
+  top: calc(8rem + 14px);
+  left: 2rem;
+  width: var(--rail-w);
+  max-height: calc(100vh - 9rem);
+  overflow-y: auto;
+}
+.article {
+  max-width: var(--measure);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* When the viewport is too narrow for rail + article, hide the rail */
+@media (max-width: 80rem) {
+  .rail { display: none; }
+}
+
+/* ============================================================
+   Rail (left): nav + sticky TOC
+   ============================================================ */
+.rail {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  padding-right: 0.4rem;
+}
+.rail h4 {
+  font-family: var(--sans);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 0 0 0.75rem;
+  padding: 0 0 0 0.9rem;
+  border: none;
+}
+.rail ul { list-style: none; margin: 0; padding: 0; }
+.rail a { color: var(--ink-soft); border: none; display: block; }
+.rail-nav { margin-bottom: 1.6rem; }
+.rail-nav li { margin: 0.55rem 0; }
+.rail-nav a {
+  font-family: var(--serif);
+  font-size: 0.98rem;
+  line-height: 1.3;
+  padding-left: 0.9rem;
+}
+.rail a:hover { color: var(--accent); background: none; border: none; }
+
+/* ModernWiki-style contents — unboxed, serif, scrollspy dot */
+.toc-block { margin-bottom: 1.8rem; }
+.toc-block h4 {
+  font-family: var(--sans);
+  font-size: 0.64rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted-2);
+  margin: 0 0 0.9rem;
+  padding: 0 0 0 0.9rem;
+  border: none;
+}
+.toc-block .toc ul { list-style: none; padding: 0; margin: 0; }
+.toc-block .toc > ul > li { margin: 0.55rem 0; }
+.toc-block .toc ul ul { margin: 0.2rem 0 0.35rem; }
+.toc-block .toc ul ul li { margin: 0.22rem 0; }
+.toc-block .toc a {
+  display: block;
+  position: relative;
+  padding: 0.1rem 0 0.1rem 0.9rem;
+  font-family: var(--serif);
+  font-size: 0.84rem;
+  line-height: 1.3;
+  color: var(--ink-soft);
+  border: none;
+}
+.toc-block .toc ul ul a {
+  font-size: 0.76rem;
+  padding-left: 1.7rem;
+  color: var(--muted);
+}
+.toc-block .toc a:hover { color: var(--accent); background: none; }
+.toc-block .toc a.active {
+  color: var(--accent);
+}
+.toc-block .toc a.active::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  color: var(--accent);
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+.toc-block .toc ul ul a.active::before { left: 0.8rem; }
+
+/* ============================================================
+   Article
+   ============================================================ */
+.article {
+  min-width: 0;
+  max-width: var(--measure);
+}
+.article-head {
+  margin-bottom: 2.6rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.article-title {
+  font-family: var(--serif);
+  font-size: clamp(2.1rem, 3.6vw, 3rem);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.012em;
+  margin: 0;
+  color: var(--ink);
+}
+.article-subtitle {
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 0.7rem;
+  letter-spacing: 0.01em;
+}
+
+.article-body { font-size: var(--base); line-height: var(--leading); }
+.article-body > p:first-child {
+  font-size: 1.06em;
+  color: var(--ink);
+}
+.article-body p { margin: 0 0 1.1em; }
+
+.article-body h2 {
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  font-weight: 500;
+  font-style: normal;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  margin: 2.6rem 0 0.6rem;
+  color: var(--ink);
+}
+.article-body h3 {
+  font-family: var(--serif);
+  font-size: 1.18rem;
+  font-weight: 600;
+  font-style: italic;
+  margin: 1.9rem 0 0.4rem;
+  color: var(--ink);
+}
+.article-body h4 {
+  font-family: var(--sans);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 1.6rem 0 0.4rem;
+}
+
+.article-body ul,
+.article-body ol {
+  margin: 0 0 1.15em;
+  padding-left: 1.4em;
+}
+.article-body li { margin: 0.2em 0; }
+.article-body li > ul,
+.article-body li > ol { margin: 0.2em 0; }
+.article-body ul > li::marker { color: var(--muted-2); }
+
+.article-body blockquote {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.04em;
+  color: var(--ink-soft);
+  border-left: 3px solid var(--rule);
+  margin: 1.5em 0;
+  padding: 0.1em 0 0.1em 1.3em;
+}
+.article-body blockquote p { margin: 0.4em 0; }
+
+.article-body code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  background: var(--rule-soft);
+  padding: 0.05em 0.4em;
+  border-radius: 2px;
+  color: var(--ink-soft);
+}
+.article-body pre {
+  font-family: var(--mono);
+  background: var(--rule-soft);
+  padding: 1em 1.2em;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.84em;
+  line-height: 1.55;
+  border: 1px solid var(--rule);
+}
+.article-body pre code { background: none; padding: 0; font-size: 1em; }
+
+/* Editorial dinkus instead of horizontal rule */
+.article-body hr {
+  border: none;
+  text-align: center;
+  margin: 2.5em 0;
+  color: var(--muted-2);
+  height: auto;
+  font-size: 1.1em;
+  line-height: 1.6;
+  overflow: visible;
+}
+.article-body hr::before {
+  content: "❖";
+  letter-spacing: 0.5em;
+  padding-left: 0.5em;
+}
+
+.article-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 2px;
+}
+/* Paragraphs containing images: create a new BFC so the image
+   shrinks to the space left of a floated infobox instead of
+   underflowing beneath it. */
+.article-body p:has(> img):not(:has(> img[src*="profile_images"])) {
+  overflow: hidden;
+}
+/* Twitter-style profile avatars float beside their adjacent quote */
+.article-body img[src*="profile_images"] {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  float: left;
+  margin: 0.1em 1em 0.2em 0;
+  box-shadow: 0 0 0 1px var(--rule);
+}
+/* Collapse the paragraph wrapping a profile avatar so the avatar aligns
+   flush with the top of its adjacent blockquote instead of sitting above it. */
+.article-body p:has(> img[src*="profile_images"]) {
+  margin: 1.5em 0 0;
+  line-height: 0;
+}
+/* When a blockquote immediately follows a profile avatar, the avatar is
+   already doing the job of marking the quote visually — drop the redundant
+   left border and padding so we don't get an awkward vertical-line stub
+   next to the circular avatar. */
+.article-body p:has(> img[src*="profile_images"]) + blockquote {
+  border-left: none;
+  padding-left: 0;
+  margin-top: 0.4em;
+  min-height: 60px;
+}
+.article-body blockquote::after { content: ""; display: block; clear: left; }
+
+.article-body .lead-figure {
+  overflow: hidden;
+  margin: 1.8em 0;
+}
+.article-body .lead-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ============================================================
+   Infobox (source pages)
+   ============================================================ */
+.infobox {
+  float: right;
+  clear: right;
+  width: 16rem;
+  margin: 0.4rem -3rem 1.4rem 1.6rem;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  border-collapse: collapse;
+  font-family: var(--sans);
+  font-size: 0.76rem;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.infobox caption {
+  font-family: var(--sans);
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  padding: 0.7rem 0.9rem;
+  background: var(--rule-soft);
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+}
+.infobox th,
+.infobox td {
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--rule-soft);
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+.infobox tr:last-child th,
+.infobox tr:last-child td { border-bottom: none; }
+.infobox th {
+  width: 6.5rem;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.infobox td a {
+  font-size: 0.76rem;
+  color: var(--accent);
+  word-break: break-all;
+}
+
+/* ============================================================
+   Callouts (Obsidian-style)
+   ============================================================ */
+.callout {
+  font-family: var(--serif);
+  font-size: 0.97em;
+  margin: 1.7em 0;
+  padding: 0.3em 0 0.3em 1.3em;
+  border-left: 3px solid var(--accent);
+  color: var(--ink-soft);
+}
+.callout-title {
+  font-family: var(--sans);
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.5em;
+  display: block;
+}
+.callout p { margin: 0.4em 0; }
+.callout p:last-child { margin-bottom: 0; }
+.callout-note { border-left-color: #2c4a7a; }
+.callout-note .callout-title { color: #2c4a7a; }
+.callout-warning { border-left-color: #b54a00; }
+.callout-warning .callout-title { color: #b54a00; }
+.callout-tip { border-left-color: #1c6a4a; }
+.callout-tip .callout-title { color: #1c6a4a; }
+
+/* Link card for external videos (X/Twitter, YouTube) when we can't or
+   don't want to embed. Used in source pages that would otherwise have a
+   broken <video> pulling from cross-origin CDN URLs. */
+.article-body .x-embed {
+  margin: 1.4em 0;
+  padding: 0;
+}
+.article-body .x-embed a {
+  display: inline-block;
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.7em 1.1em;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.04);
+}
+.article-body .x-embed a:hover {
+  background: var(--rule-soft);
+  border-color: var(--muted-2);
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   Backlinks
+   ============================================================ */
+.backlinks-main {
+  margin-top: 4rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid var(--rule);
+}
+.backlinks-main h2 {
+  font-family: var(--sans);
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin: 0 0 1rem;
+  border: none;
+}
+.backlinks-main ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  columns: 2;
+  column-gap: 2.2rem;
+  font-family: var(--serif);
+  font-size: 0.92rem;
+}
+.backlinks-main li {
+  margin: 0.25rem 0;
+  break-inside: avoid;
+  line-height: 1.45;
+}
+
+/* ============================================================
+   Footer (per article)
+   ============================================================ */
+.article-foot {
+  margin-top: 3.5rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  align-items: center;
+}
+.article-foot .sep { color: var(--rule); }
+.article-foot a {
+  color: var(--muted);
+  border-bottom-color: var(--rule);
+}
+.article-foot a:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: none;
+}
+
+/* ============================================================
+   Home page (home.md → /index.html). Body class is .page-home
+   because the body class uses the *source* slug, not the
+   output filename.
+   ============================================================ */
+.page-home .article {
+  max-width: 48rem;
+}
+/* Nav rail shown only on Home — interior pages get TOC only */
+body:not(.page-home) .rail-nav { display: none; }
+.page-home .article-title { font-size: clamp(2.4rem, 4.5vw, 3.4rem); }
+
+/* ============================================================
+   Catalog grid (index.md → /catalog.html). Body class is
+   .page-index for the same reason.
+   ============================================================ */
+.page-index .article,
+.page-all-pages .article { max-width: var(--measure); }
+
+.collab-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.2em 0 1.6em;
+  border-top: 1px solid var(--rule);
+}
+.collab-list li {
+  padding: 0.9em 0;
+  border-bottom: 1px solid var(--rule);
+}
+.collab-list li a {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.12rem;
+  color: var(--ink);
+  border: none;
+}
+.collab-list li a:hover { color: var(--accent); background: none; }
+.collab-list .collab-lead {
+  font-family: var(--serif);
+  font-size: 0.92rem;
+  color: var(--muted);
+  margin-top: 0.25em;
+  line-height: 1.45;
+}
+
+.main-banner {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 1.5rem 1.9rem;
+  margin-bottom: 2rem;
+}
+.main-banner > :first-child { margin-top: 0; }
+.main-banner > :last-child { margin-bottom: 0; }
+.main-banner blockquote {
+  margin: 0.4rem 0;
+  font-family: var(--serif);
+  font-style: italic;
+  border-left: 3px solid var(--rule);
+  padding: 0.2rem 1rem;
+  color: var(--ink-soft);
+}
+.main-stats {
+  margin-top: 1rem;
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  color: var(--muted);
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 0.9rem;
+}
+.main-stats code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+}
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.6rem;
+}
+.main-card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 1.2rem 1.5rem 1.3rem;
+}
+.main-card h2 {
+  font-family: var(--serif);
+  font-size: 1.12rem;
+  font-weight: 600;
+  font-style: normal;
+  margin: 0 0 0.65rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.main-card ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+.main-card li { margin: 0.32rem 0; }
+
+/* ============================================================
+   Recent changes (log)
+   ============================================================ */
+.page-log .article { max-width: var(--measure); }
+.log-intro {
+  font-family: var(--sans);
+  font-size: 0.84rem;
+  color: var(--muted);
+  margin-bottom: 1.6rem;
+}
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.log-entry td {
+  padding: 0.95rem 0.6rem;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: top;
+}
+.log-time {
+  white-space: nowrap;
+  font-family: var(--mono);
+  color: var(--muted);
+  width: 8.5rem;
+  font-size: 0.74rem;
+  padding-top: 1.1rem !important;
+}
+.log-op { width: 7rem; padding-top: 1.05rem !important; }
+.op-tag {
+  display: inline-block;
+  padding: 0.16rem 0.55rem;
+  font-family: var(--sans);
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 2px;
+  background: var(--rule-soft);
+  color: var(--muted);
+  border: 1px solid var(--rule);
+}
+.op-ingest { background: #e1f3ea; color: #1c6a4a; border-color: #c5e6d3; }
+.op-seed { background: #fdf0d3; color: #8a5a00; border-color: #f0dba6; }
+.op-digest { background: #e1ecfa; color: #2c4a8a; border-color: #c5d8ee; }
+.op-promote, .op-schema { background: #efe1f8; color: #5a2890; border-color: #dac4e8; }
+.op-index { background: #fadce0; color: #8a2828; border-color: #efc4cc; }
+.log-title {
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.log-body p {
+  margin: 0.3em 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+/* ============================================================
+   Wikilink hover popover
+   ============================================================ */
+.wiki-popover {
+  position: absolute;
+  z-index: 200;
+  width: 23rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.95rem 1.15rem;
+  box-shadow: 0 16px 44px rgba(40, 30, 20, 0.18);
+  font-family: var(--serif);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--ink);
+  /* Hidden state: truly non-interactive. pointer-events: none lets clicks,
+     text selection, and link hover pass through to content underneath.
+     visibility: hidden takes effect after the opacity fade (via delay) so
+     the fade-out still animates, but once gone the element is fully inert. */
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .15s ease, transform .15s ease, visibility 0s linear .15s;
+}
+.wiki-popover.visible {
+  pointer-events: auto;
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity .15s ease, transform .15s ease, visibility 0s linear 0s;
+}
+.wiki-popover .pop-type {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+.wiki-popover .pop-title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.05rem;
+  font-weight: 500;
+  margin: 0 0 0.45rem;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.wiki-popover .pop-lead {
+  color: var(--ink-soft);
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 1100px) {
+  .layout { padding: 2.4rem 2rem 5rem; }
+  .article { margin-left: auto; }
+  .infobox { margin-right: -1.5rem; width: 14rem; }
+}
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 1.6rem 1.4rem 4rem;
+  }
+  .infobox {
+    float: none;
+    width: 100%;
+    margin: 1.4rem 0;
+  }
+  .main-grid { grid-template-columns: 1fr; }
+  .masthead { padding: 1rem 1.2rem; }
+  #search-input { width: 10rem; }
+  #search-results { width: 17rem; }
+  .backlinks-main ul { columns: 1; }
+}
