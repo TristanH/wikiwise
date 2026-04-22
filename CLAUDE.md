@@ -6,6 +6,7 @@ A native macOS wiki reader — SwiftUI app with sidebar file browser and rendere
 
 - Build: `swift build`
 - Run: `.build/arm64-apple-macosx/debug/Wikiwise`
+- Release: `bash scripts/build-release.sh <version>` — **always use this for releases.** It builds a universal binary (arm64 + x86_64), code-signs with the Readwise Developer ID, creates a DMG with drag-to-Applications, notarizes with Apple, and staples the ticket. Never build releases manually or skip this script.
 
 ## Architecture
 
